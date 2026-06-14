@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ClearSite — what's near this address</title>
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Turf.js (distance + bearing) -->
+<script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+
+<!-- Display face -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --paper: #FAFAF7;
+    --ink: #1F2A24;
+    --ink-soft: #4A554E;
+    --moss: #3E6B4F;
+    --moss-tint: rgba(62, 107, 79, 0.14);
+    --signal: #B4541E;
+    --hairline: #D9D7CE;
+    --display: "Archivo", system-ui, sans-serif;
+    --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: var(--body);
+    color: var(--ink);
+    background: var(--paper);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- Layout: map + panel ---------- */
+  #app {
+    flex: 1;
+    display: flex;
+    min-height: 0; /* allow children to shrink */
+  }
+
+  #map-wrap { position: relative; flex: 1; min-width: 0; }
+  #map { position: absolute; inset: 0; }
+
+  #panel {
+    width: 340px;
+    flex-shrink: 0;
+    background: var(--paper);
+    border-left: 1px solid var(--hairline);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  /* ---------- Search card ---------- */
+  #search-card {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    z-index: 1000; /* above Leaflet panes */
+    background: var(--paper);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(31, 42, 36, 0.12);
+    padding: 12px 14px;
+    width: min(360px, calc(100vw - 28px));
+  }
+
+  #wordmark {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--moss);
+    margin-bottom: 2px;
+  }
+  #wordmark .site { color: var(--ink); }
+
+  #tagline {
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-bottom: 10px;
+  }
+
+  #search-form { display: flex; gap: 8px; }
+
+  #address {
+    flex: 1;
+    min-width: 0;
+    font: inherit;
+    font-size: 14px;
+    padding: 9px 11px;
+    border: 1px solid var(--hairline);
+    border-radius: 7px;
+    background: #fff;
+    color: var(--ink);
+  }
+  #address::placeholder { color: #9AA39D; }
+  #address:focus-visible,
+  #search-btn:focus-visible,
+  .row:focus-visible {
+    outline: 2px solid var(--moss);
+    outline-offset: 2px;
+  }
+
+  #search-btn {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    padding: 9px 16px;
+    border: none;
+    border-radius: 7px;
+    background: var(--moss);
+    color: #fff;
+    cursor: pointer;
+  }
+  #search-btn:hover { background: #335B42; }
+  #search-btn:disabled { background: #8FA697; cursor: wait; }
+
+  /* ---------- Panel ---------- */
+  #panel-head {
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  #panel-title {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+
+  #panel-sub {
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-top: 4px;
+    line-height: 1.45;
+  }
+
+  #status {
+    padding: 10px 18px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    display: none;
+    align-items: center;
+    gap: 8px;
+  }
+  #status.show { display: flex; }
+  #status.error { color: var(--signal); }
+
+  .spinner {
+    width: 13px; height: 13px;
+    border: 2px solid var(--hairline);
+    border-top-color: var(--moss);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .spinner { animation: none; border-top-color: var(--hairline); }
+  }
+
+  #results { flex: 1; overflow-y: auto; min-height: 0; }
+
+  .row {
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--hairline);
+    padding: 12px 18px;
+    cursor: pointer;
+    display: flex;
+    gap: 11px;
+    align-items: flex-start;
+    color: var(--ink);
+  }
+  .row:hover { background: var(--moss-tint); }
+
+  /* Signature: bearing arrow, rotated to the facility's true heading */
+  .bearing {
+    flex-shrink: 0;
+    width: 26px; height: 26px;
+    border: 1px solid var(--hairline);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: var(--signal);
+    margin-top: 1px;
+  }
+  .bearing svg { display: block; }
+
+  .row-body { min-width: 0; }
+
+  .row-name {
+    font-size: 13.5px;
+    font-weight: 600;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .row-meta {
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .row-meta .dir { color: var(--signal); font-weight: 600; }
+
+  .note {
+    padding: 16px 18px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+
+  #panel-foot {
+    border-top: 1px solid var(--hairline);
+    padding: 10px 18px;
+    font-size: 11px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+
+  /* ---------- Map markers ---------- */
+  .tri-dot {
+    width: 14px; height: 14px;
+    background: var(--signal);
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(31,42,36,0.4);
+  }
+  .tri-dot.active { transform: scale(1.45); }
+
+  .home-pin {
+    width: 16px; height: 16px;
+    background: var(--moss);
+    border: 3px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 1px 5px rgba(31,42,36,0.45);
+  }
+
+  .leaflet-popup-content { font-family: var(--body); font-size: 13px; }
+
+  /* ---------- Mobile: panel stacks below map ---------- */
+  @media (max-width: 720px) {
+    #app { flex-direction: column; }
+    #map-wrap { flex: 1 1 55%; }
+    #panel {
+      width: 100%;
+      flex: 1 1 45%;
+      border-left: none;
+      border-top: 1px solid var(--hairline);
+    }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="map-wrap">
+    <div id="map" aria-label="Map"></div>
+
+    <div id="search-card">
+      <div id="wordmark">Clear<span class="site">Site</span></div>
+      <div id="tagline">We show you what's there. You decide what matters.</div>
+      <form id="search-form">
+        <input id="address" type="text" autocomplete="street-address"
+               placeholder="Street address, city, MI"
+               aria-label="Street address" />
+        <button id="search-btn" type="submit">Search</button>
+      </form>
+    </div>
+  </div>
+
+  <aside id="panel" aria-label="Nearby concerns">
+    <div id="panel-head">
+      <div id="panel-title">Within 1 mile</div>
+      <div id="panel-sub">EPA Toxics Release Inventory facilities near the searched address. Informational only — distance and direction, you weigh it.</div>
+    </div>
+
+    <div id="status" role="status"></div>
+
+    <div id="results">
+      <div class="note">Search an address to begin. Try one you know — a current home, a listing you're considering, a friend's place.</div>
+    </div>
+
+    <div id="panel-foot">
+      Data: EPA Envirofacts (TRI) · Geocoding &amp; tiles © <a href="https://www.openstreetmap.org/copyright" style="color:inherit">OpenStreetMap</a> contributors
+    </div>
+  </aside>
+</div>
+
+<script>
+"use strict";
+
+/* =====================================================================
+   ClearSite core loop:
+   address -> geocode (Nominatim) -> center + pin -> 1 mi circle
+           -> EPA TRI query -> nearest-first list w/ distance + bearing
+   Coordinate discipline:
+     Leaflet wants [lat, lng]; Turf & GeoJSON want [lng, lat].
+===================================================================== */
+
+const ANN_ARBOR = { lat: 42.2808, lng: -83.7430 };
+const RADIUS_METERS = 1609.34; // 1 mile
+const EPA_TRI_URL = "https://geopub.epa.gov/ArcGIS/rest/services/EMEF/efpoints/MapServer/1/query";
+const PROXY_PATH = "/api/tri"; // Netlify Function fallback (CORS safety net)
+
+/* ---------- Map setup ---------- */
+const map = L.map("map", { zoomControl: true }).setView([ANN_ARBOR.lat, ANN_ARBOR.lng], 12);
+
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+}).addTo(map);
+
+/* Layer groups so each new search wipes the old state cleanly */
+const homeLayer = L.layerGroup().addTo(map);
+const circleLayer = L.layerGroup().addTo(map);
+const facilityLayer = L.layerGroup().addTo(map);
+
+/* ---------- DOM refs ---------- */
+const form = document.getElementById("search-form");
+const addressInput = document.getElementById("address");
+const searchBtn = document.getElementById("search-btn");
+const statusEl = document.getElementById("status");
+const resultsEl = document.getElementById("results");
+
+/* ---------- UI helpers ---------- */
+function setStatus(msg, { busy = false, error = false } = {}) {
+  statusEl.className = "show" + (error ? " error" : "");
+  statusEl.innerHTML = "";
+  if (busy) {
+    const s = document.createElement("span");
+    s.className = "spinner";
+    statusEl.appendChild(s);
+  }
+  statusEl.appendChild(document.createTextNode(msg));
+}
+function clearStatus() {
+  statusEl.className = "";
+  statusEl.innerHTML = "";
+}
+function setNote(text) {
+  resultsEl.innerHTML = "";
+  const n = document.createElement("div");
+  n.className = "note";
+  n.textContent = text;
+  resultsEl.appendChild(n);
+}
+
+/* ---------- Compass helpers ---------- */
+const COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+function compassPoint(bearing) {
+  // turf.bearing returns -180..180; normalize to 0..360 then bucket into 8
+  const deg = ((bearing % 360) + 360) % 360;
+  return COMPASS[Math.round(deg / 45) % 8];
+}
+
+/* Signature element: an arrow rotated to the facility's true bearing */
+function bearingArrow(bearing) {
+  const deg = ((bearing % 360) + 360) % 360;
+  const wrap = document.createElement("span");
+  wrap.className = "bearing";
+  wrap.title = Math.round(deg) + "\u00B0";
+  wrap.innerHTML =
+    '<svg width="14" height="14" viewBox="0 0 14 14" style="transform: rotate(' + deg + 'deg)" aria-hidden="true">' +
+    '<path d="M7 1 L10.2 9.5 L7 7.7 L3.8 9.5 Z" fill="currentColor"/>' +
+    "</svg>";
+  return wrap;
+}
+
+/* ---------- Geocoding (Nominatim — plain fetch, NO custom headers) ---------- */
+async function geocode(query) {
+  const url =
+    "https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q=" +
+    encodeURIComponent(query);
+  const res = await fetch(url); // no headers: avoids CORS preflight
+  if (!res.ok) throw new Error("Geocoder returned " + res.status);
+  const data = await res.json();
+  if (!Array.isArray(data) || data.length === 0) return null;
+  return {
+    lat: parseFloat(data[0].lat),
+    lng: parseFloat(data[0].lon),
+    label: data[0].display_name || query
+  };
+}
+
+/* ---------- EPA TRI query: direct first, Netlify proxy as fallback ---------- */
+function triParams(lng, lat) {
+  return new URLSearchParams({
+    f: "geojson",
+    geometry: lng + "," + lat, // longitude first
+    geometryType: "esriGeometryPoint",
+    inSR: "4326",
+    outSR: "4326",
+    spatialRel: "esriSpatialRelIntersects",
+    distance: String(RADIUS_METERS),
+    units: "esriSRUnit_Meter",
+    outFields: "*",
+    returnGeometry: "true"
+  });
+}
+
+async function fetchTri(lng, lat) {
+  const params = triParams(lng, lat);
+
+  // 1) Direct browser request to EPA
+  try {
+    const res = await fetch(EPA_TRI_URL + "?" + params.toString());
+    if (!res.ok) throw new Error("EPA returned " + res.status);
+    const data = await res.json();
+    if (data.error) throw new Error("EPA error: " + (data.error.message || "unknown"));
+    return data;
+  } catch (directErr) {
+    // 2) Fallback: same query via the Netlify Function (handles CORS).
+    //    Only meaningful when the site is served by Netlify, not file://
+    if (location.protocol === "http:" || location.protocol === "https:") {
+      const res = await fetch(PROXY_PATH + "?lng=" + encodeURIComponent(lng) + "&lat=" + encodeURIComponent(lat));
+      if (!res.ok) throw new Error("Proxy returned " + res.status);
+      const data = await res.json();
+      if (data.error) throw new Error("EPA error via proxy");
+      return data;
+    }
+    throw directErr;
+  }
+}
+
+/* ---------- Render results ---------- */
+function renderResults(features, origin) {
+  // origin: {lat, lng}; feature geometry.coordinates is [lng, lat]
+  const from = turf.point([origin.lng, origin.lat]);
+
+  const rows = features
+    .filter(f => f && f.geometry && Array.isArray(f.geometry.coordinates))
+    .map(f => {
+      const [flng, flat] = f.geometry.coordinates;
+      const to = turf.point([flng, flat]);
+      return {
+        name: (f.properties && f.properties.PRIMARY_NAME) || "Unnamed facility",
+        lat: flat,
+        lng: flng,
+        miles: turf.distance(from, to, { units: "miles" }),
+        bearing: turf.bearing(from, to)
+      };
+    })
+    .sort((a, b) => a.miles - b.miles);
+
+  facilityLayer.clearLayers();
+  resultsEl.innerHTML = "";
+
+  if (rows.length === 0) {
+    setNote("No TRI facilities within 1 mile of this address.");
+    return;
+  }
+
+  const markers = [];
+
+  rows.forEach((r, i) => {
+    // Map marker — Leaflet order: [lat, lng]
+    const marker = L.marker([r.lat, r.lng], {
+      icon: L.divIcon({ className: "", html: '<div class="tri-dot"></div>', iconSize: [14, 14], iconAnchor: [7, 7] }),
+      title: r.name
+    }).bindPopup(
+      "<strong>" + escapeHtml(r.name) + "</strong><br>" +
+      r.miles.toFixed(1) + " mi " + compassPoint(r.bearing) + " of searched address"
+    );
+    marker.addTo(facilityLayer);
+    markers.push(marker);
+
+    // Sidebar row
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "row";
+    row.appendChild(bearingArrow(r.bearing));
+
+    const body = document.createElement("div");
+    body.className = "row-body";
+
+    const name = document.createElement("div");
+    name.className = "row-name";
+    name.textContent = r.name;
+
+    const meta = document.createElement("div");
+    meta.className = "row-meta";
+    meta.innerHTML = r.miles.toFixed(1) + " mi <span class='dir'>" + compassPoint(r.bearing) + "</span>";
+
+    body.appendChild(name);
+    body.appendChild(meta);
+    row.appendChild(body);
+
+    row.addEventListener("click", () => {
+      map.panTo([r.lat, r.lng]); // [lat, lng]
+      markers[i].openPopup();
+    });
+
+    resultsEl.appendChild(row);
+  });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+/* ---------- The core loop ---------- */
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const query = addressInput.value.trim();
+  if (!query) return;
+
+  searchBtn.disabled = true;
+  setNote("");
+  resultsEl.innerHTML = "";
+
+  try {
+    /* 1. Geocode */
+    setStatus("Finding address\u2026", { busy: true });
+    const place = await geocode(query);
+    if (!place) {
+      setStatus("Address not found \u2014 try adding city and state.", { error: true });
+      setNote("Search an address to begin.");
+      return;
+    }
+
+    /* 2. Center, pin, circle */
+    homeLayer.clearLayers();
+    circleLayer.clearLayers();
+    facilityLayer.clearLayers();
+
+    L.marker([place.lat, place.lng], { // [lat, lng]
+      icon: L.divIcon({ className: "", html: '<div class="home-pin"></div>', iconSize: [16, 16], iconAnchor: [8, 8] }),
+      title: "Searched address"
+    }).bindPopup("<strong>Searched address</strong><br>" + escapeHtml(place.label))
+      .addTo(homeLayer);
+
+    L.circle([place.lat, place.lng], { // [lat, lng]
+      radius: RADIUS_METERS,
+      color: "#3E6B4F",
+      weight: 1.5,
+      fillColor: "#3E6B4F",
+      fillOpacity: 0.10
+    }).addTo(circleLayer);
+
+    map.fitBounds(circleLayer.getLayers()[0].getBounds(), { padding: [24, 24] });
+
+    /* 3. Query EPA TRI */
+    setStatus("Checking EPA records\u2026", { busy: true });
+    const geojson = await fetchTri(place.lng, place.lat);
+    clearStatus();
+
+    /* 4. List nearest-first */
+    renderResults(geojson.features || [], place);
+
+  } catch (err) {
+    console.error(err);
+    setStatus("Couldn't load facility data \u2014 " + (err && err.message ? err.message : "network error") + ". The map still works; try again in a moment.", { error: true });
+    setNote("Results unavailable for this search.");
+  } finally {
+    searchBtn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
