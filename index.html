@@ -494,7 +494,7 @@ function renderResults(features, origin) {
       const [flng, flat] = f.geometry.coordinates;
       const to = turf.point([flng, flat]);
       return {
-        name: (f.properties && f.properties.PRIMARY_NAME) || "Unnamed facility",
+        name: (f.properties && f.properties.primary_name) || "Unnamed facility",
         lat: flat,
         lng: flng,
         miles: turf.distance(from, to, { units: "miles" }),
