@@ -4,6 +4,9 @@ node_modules/
 # Netlify
 .netlify/
 
+# Local tooling
+.claude/
+
 # Editor / OS
 .DS_Store
 Thumbs.db

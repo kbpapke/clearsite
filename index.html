@@ -202,13 +202,14 @@
 
   #results { flex: 1; overflow-y: auto; min-height: 0; }
 
+  .row-item { border-bottom: 1px solid var(--hairline); }
+
   .row {
     width: 100%;
     text-align: left;
     font: inherit;
     background: none;
     border: none;
-    border-bottom: 1px solid var(--hairline);
     padding: 12px 18px;
     cursor: pointer;
     display: flex;
@@ -231,7 +232,47 @@
   }
   .bearing svg { display: block; }
 
-  .row-body { min-width: 0; }
+  .row-body { flex: 1; min-width: 0; }
+
+  /* Chevron: indicates the row expands; rotates when open */
+  .row-chev {
+    flex-shrink: 0;
+    align-self: center;
+    font-size: 18px;
+    line-height: 1;
+    color: var(--ink-soft);
+    transition: transform 0.15s ease;
+  }
+  .row[aria-expanded="true"] .row-chev { transform: rotate(90deg); }
+  @media (prefers-reduced-motion: reduce) { .row-chev { transition: none; } }
+
+  /* Collapsible detail panel under a row */
+  .row-details {
+    padding: 0 18px 14px 55px; /* left aligns under the row name (18 pad + 26 arrow + 11 gap) */
+  }
+  .row-details[hidden] { display: none; }
+
+  .detail-list {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 3px 12px;
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.45;
+  }
+  .detail-list dt { color: var(--ink-soft); font-weight: 600; }
+  .detail-list dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+
+  .detail-link {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--moss);
+    text-decoration: none;
+  }
+  .detail-link:hover { text-decoration: underline; }
+  .detail-link:focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; }
 
   .row-name {
     font-size: 13.5px;
@@ -493,8 +534,16 @@ function renderResults(features, origin) {
     .map(f => {
       const [flng, flat] = f.geometry.coordinates;
       const to = turf.point([flng, flat]);
+      const p = f.properties || {};
       return {
-        name: (f.properties && f.properties.primary_name) || "Unnamed facility",
+        name: p.primary_name || "Unnamed facility",
+        address: p.location_address || "",
+        city: p.city_name || "",
+        state: p.state_code || "",
+        zip: p.postal_code || "",
+        county: p.county_name || "",
+        registryId: p.registry_id || "",
+        url: p.facility_url || "",
         lat: flat,
         lng: flng,
         miles: turf.distance(from, to, { units: "miles" }),
@@ -514,21 +563,29 @@ function renderResults(features, origin) {
   const markers = [];
 
   rows.forEach((r, i) => {
+    const cityLine = [r.city, [r.state, r.zip].filter(Boolean).join(" ")]
+      .filter(Boolean).join(", ");
+
     // Map marker — Leaflet order: [lat, lng]
     const marker = L.marker([r.lat, r.lng], {
       icon: L.divIcon({ className: "", html: '<div class="tri-dot"></div>', iconSize: [14, 14], iconAnchor: [7, 7] }),
       title: r.name
     }).bindPopup(
       "<strong>" + escapeHtml(r.name) + "</strong><br>" +
+      (r.address ? escapeHtml(r.address) + "<br>" : "") +
       r.miles.toFixed(1) + " mi " + compassPoint(r.bearing) + " of searched address"
     );
     marker.addTo(facilityLayer);
     markers.push(marker);
 
-    // Sidebar row
+    // ----- Sidebar item: clickable summary row + collapsible details -----
+    const item = document.createElement("div");
+    item.className = "row-item";
+
     const row = document.createElement("button");
     row.type = "button";
     row.className = "row";
+    row.setAttribute("aria-expanded", "false");
     row.appendChild(bearingArrow(r.bearing));
 
     const body = document.createElement("div");
@@ -546,13 +603,66 @@ function renderResults(features, origin) {
     body.appendChild(meta);
     row.appendChild(body);
 
+    const chev = document.createElement("span");
+    chev.className = "row-chev";
+    chev.setAttribute("aria-hidden", "true");
+    chev.textContent = "›"; // ›
+    row.appendChild(chev);
+
+    // Detail panel — revealed on click
+    const details = document.createElement("div");
+    details.className = "row-details";
+    details.hidden = true;
+
+    const dl = document.createElement("dl");
+    dl.className = "detail-list";
+    addDetail(dl, "Address", r.address);
+    addDetail(dl, "City", cityLine);
+    addDetail(dl, "County", titleCaseCounty(r.county));
+    addDetail(dl, "Registry ID", r.registryId);
+    details.appendChild(dl);
+
+    if (r.url) {
+      const link = document.createElement("a");
+      link.className = "detail-link";
+      link.href = r.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "View full EPA report ↗";
+      details.appendChild(link);
+    }
+
     row.addEventListener("click", () => {
+      const open = row.getAttribute("aria-expanded") === "true";
+      row.setAttribute("aria-expanded", String(!open));
+      details.hidden = open;
       map.panTo([r.lat, r.lng]); // [lat, lng]
       markers[i].openPopup();
     });
 
-    resultsEl.appendChild(row);
+    item.appendChild(row);
+    item.appendChild(details);
+    resultsEl.appendChild(item);
   });
+}
+
+/* Build one "label / value" pair in a detail list; skips empty values */
+function addDetail(dl, label, value) {
+  if (!value) return;
+  const dt = document.createElement("dt");
+  dt.textContent = label;
+  const dd = document.createElement("dd");
+  dd.textContent = value;
+  dl.appendChild(dt);
+  dl.appendChild(dd);
+}
+
+/* EPA county values are inconsistent (WASHTENAW vs WASHTENAW COUNTY) — tidy them */
+function titleCaseCounty(s) {
+  if (!s) return "";
+  const base = s.replace(/\s+COUNTY$/i, "").toLowerCase()
+    .replace(/\b\w/g, c => c.toUpperCase());
+  return base + " County";
 }
 
 function escapeHtml(s) {
