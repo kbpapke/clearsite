@@ -95,12 +95,14 @@
 
   #search-form { display: flex; gap: 8px; }
 
+  #address-wrap { position: relative; flex: 1; min-width: 0; }
+
   #address {
-    flex: 1;
+    width: 100%;
     min-width: 0;
     font: inherit;
     font-size: 14px;
-    padding: 9px 11px;
+    padding: 9px 34px 9px 11px; /* right padding leaves room for the clear button */
     border: 1px solid var(--hairline);
     border-radius: 7px;
     background: #fff;
@@ -108,11 +110,34 @@
   }
   #address::placeholder { color: #9AA39D; }
   #address:focus-visible,
+  #clear-btn:focus-visible,
   #search-btn:focus-visible,
   .row:focus-visible {
     outline: 2px solid var(--moss);
     outline-offset: 2px;
   }
+
+  /* Clear button — sits inside the field, shown only when there's text */
+  #clear-btn {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--hairline);
+    color: var(--ink-soft);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  #clear-btn:hover { background: #C9C7BD; color: var(--ink); }
+  #clear-btn[hidden] { display: none; }
 
   #search-btn {
     font-family: var(--display);
@@ -281,9 +306,12 @@
       <div id="wordmark">Healthy <span class="site">Homes</span></div>
       <div id="tagline">We show you what's there. You decide what matters.</div>
       <form id="search-form">
-        <input id="address" type="text" autocomplete="street-address"
-               placeholder="Street address, city, MI"
-               aria-label="Street address" />
+        <div id="address-wrap">
+          <input id="address" type="text" autocomplete="street-address"
+                 placeholder="Street address, city, MI"
+                 aria-label="Street address" />
+          <button id="clear-btn" type="button" aria-label="Clear address" hidden>&times;</button>
+        </div>
         <button id="search-btn" type="submit">Search</button>
       </form>
     </div>
@@ -339,9 +367,21 @@ const facilityLayer = L.layerGroup().addTo(map);
 /* ---------- DOM refs ---------- */
 const form = document.getElementById("search-form");
 const addressInput = document.getElementById("address");
+const clearBtn = document.getElementById("clear-btn");
 const searchBtn = document.getElementById("search-btn");
 const statusEl = document.getElementById("status");
 const resultsEl = document.getElementById("results");
+
+/* ---------- Clear button: show only when there's text; reset + refocus ---------- */
+function toggleClearBtn() {
+  clearBtn.hidden = addressInput.value.length === 0;
+}
+addressInput.addEventListener("input", toggleClearBtn);
+clearBtn.addEventListener("click", () => {
+  addressInput.value = "";
+  toggleClearBtn();
+  addressInput.focus(); // keeps the keyboard up on mobile, ready to paste
+});
 
 /* ---------- UI helpers ---------- */
 function setStatus(msg, { busy = false, error = false } = {}) {
