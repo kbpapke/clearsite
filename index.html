@@ -324,6 +324,141 @@
 
   .leaflet-popup-content { font-family: var(--body); font-size: 13px; }
 
+  /* ---------- Top bar: brand + view menu ---------- */
+  #topbar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px;
+    background: var(--paper);
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  #brand {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--moss);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
+  #brand .site { color: var(--ink); }
+  #brand:focus-visible { outline: 2px solid var(--moss); outline-offset: 3px; }
+
+  /* Segmented view switcher */
+  #nav {
+    display: flex;
+    gap: 4px;
+    background: var(--moss-tint);
+    padding: 3px;
+    border-radius: 9px;
+  }
+  .nav-btn {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 7px;
+    background: none;
+    color: var(--moss);
+    cursor: pointer;
+  }
+  .nav-btn.active { background: var(--moss); color: #fff; }
+  .nav-btn:focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; }
+
+  /* ---------- History view ---------- */
+  #history-view {
+    flex: 1;
+    display: none; /* shown when body.view-history */
+    flex-direction: column;
+    min-height: 0;
+    background: var(--paper);
+  }
+  body.view-history #app { display: none; }
+  body.view-history #history-view { display: flex; }
+
+  #history-head, #history-list { width: 100%; max-width: 720px; margin-left: auto; margin-right: auto; }
+
+  #history-head {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  #history-title {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+  #history-clear {
+    font: inherit;
+    font-size: 12px;
+    color: var(--signal);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 6px;
+  }
+  #history-clear:hover { text-decoration: underline; }
+  #history-clear:focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; }
+  #history-clear[hidden] { display: none; }
+
+  #history-list { flex: 1; overflow-y: auto; min-height: 0; }
+
+  .hist-item {
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .hist-main {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+    font: inherit;
+    background: none;
+    border: none;
+    padding: 13px 18px;
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .hist-main:hover { background: var(--moss-tint); }
+  .hist-label {
+    font-size: 13.5px;
+    font-weight: 600;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+  .hist-sub { font-size: 12px; color: var(--ink-soft); margin-top: 3px; }
+
+  .hist-del {
+    flex-shrink: 0;
+    width: 46px;
+    border: none;
+    border-left: 1px solid var(--hairline);
+    background: none;
+    color: var(--ink-soft);
+    font-size: 19px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .hist-del:hover { background: var(--moss-tint); color: var(--signal); }
+  .hist-main:focus-visible,
+  .hist-del:focus-visible { outline: 2px solid var(--moss); outline-offset: -2px; }
+
   /* ---------- Mobile: panel stacks below map ---------- */
   @media (max-width: 720px) {
     #app { flex-direction: column; }
@@ -334,17 +469,27 @@
       border-left: none;
       border-top: 1px solid var(--hairline);
     }
+    #topbar { padding: 9px 13px; }
+    #brand { font-size: 13px; letter-spacing: 0.08em; }
+    .nav-btn { padding: 8px 13px; }
   }
 </style>
 </head>
 <body>
+
+<header id="topbar">
+  <button id="brand" type="button" aria-label="Healthy Homes — go to search">Healthy <span class="site">Homes</span></button>
+  <nav id="nav" aria-label="Views">
+    <button id="nav-search" type="button" class="nav-btn active" aria-current="page">Search</button>
+    <button id="nav-history" type="button" class="nav-btn">History</button>
+  </nav>
+</header>
 
 <div id="app">
   <div id="map-wrap">
     <div id="map" aria-label="Map"></div>
 
     <div id="search-card">
-      <div id="wordmark">Healthy <span class="site">Homes</span></div>
       <div id="tagline">We show you what's there. You decide what matters.</div>
       <form id="search-form">
         <div id="address-wrap">
@@ -375,6 +520,14 @@
     </div>
   </aside>
 </div>
+
+<section id="history-view" aria-label="Search history">
+  <div id="history-head">
+    <div id="history-title">Search History</div>
+    <button id="history-clear" type="button" hidden>Clear all</button>
+  </div>
+  <div id="history-list"></div>
+</section>
 
 <script>
 "use strict";
@@ -412,6 +565,11 @@ const clearBtn = document.getElementById("clear-btn");
 const searchBtn = document.getElementById("search-btn");
 const statusEl = document.getElementById("status");
 const resultsEl = document.getElementById("results");
+const brandBtn = document.getElementById("brand");
+const navSearchBtn = document.getElementById("nav-search");
+const navHistoryBtn = document.getElementById("nav-history");
+const historyListEl = document.getElementById("history-list");
+const historyClearBtn = document.getElementById("history-clear");
 
 /* ---------- Clear button: show only when there's text; reset + refocus ---------- */
 function toggleClearBtn() {
@@ -423,6 +581,139 @@ clearBtn.addEventListener("click", () => {
   toggleClearBtn();
   addressInput.focus(); // keeps the keyboard up on mobile, ready to paste
 });
+
+/* =====================================================================
+   Search history (localStorage) + view switching (Search <-> History)
+===================================================================== */
+const HISTORY_KEY = "hh_search_history_v1";
+const MAX_HISTORY = 50;
+let searchHistory = loadHistory();
+
+function loadHistory() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) { return []; } // private mode / corrupt data -> start empty
+}
+function saveHistory() {
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(searchHistory)); } catch (e) {}
+}
+
+/* Dedupe by rounded location so the same place doesn't pile up */
+function locKey(lat, lng) { return lat.toFixed(5) + "," + lng.toFixed(5); }
+
+function addHistory(query, place) {
+  const key = locKey(place.lat, place.lng);
+  searchHistory = searchHistory.filter(h => locKey(h.lat, h.lng) !== key);
+  searchHistory.unshift({
+    id: Date.now() + "-" + Math.random().toString(36).slice(2, 7),
+    query: query,
+    label: place.label || query,
+    lat: place.lat,
+    lng: place.lng,
+    ts: Date.now()
+  });
+  searchHistory = searchHistory.slice(0, MAX_HISTORY);
+  saveHistory();
+  renderHistory();
+}
+function removeHistory(id) {
+  searchHistory = searchHistory.filter(h => h.id !== id);
+  saveHistory();
+  renderHistory();
+}
+
+function timeAgo(ts) {
+  if (!ts) return "";
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return "just now";
+  const m = Math.floor(s / 60);
+  if (m < 60) return m + (m === 1 ? " minute" : " minutes") + " ago";
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + (h === 1 ? " hour" : " hours") + " ago";
+  const d = Math.floor(h / 24);
+  if (d < 7) return d + (d === 1 ? " day" : " days") + " ago";
+  return new Date(ts).toLocaleDateString();
+}
+
+function renderHistory() {
+  historyListEl.innerHTML = "";
+  historyClearBtn.hidden = searchHistory.length === 0;
+
+  if (searchHistory.length === 0) {
+    const n = document.createElement("div");
+    n.className = "note";
+    n.textContent = "No searches yet. Addresses you search will be saved here so you can revisit them.";
+    historyListEl.appendChild(n);
+    return;
+  }
+
+  searchHistory.forEach(entry => {
+    const item = document.createElement("div");
+    item.className = "hist-item";
+
+    const main = document.createElement("button");
+    main.type = "button";
+    main.className = "hist-main";
+
+    const label = document.createElement("div");
+    label.className = "hist-label";
+    label.textContent = entry.label || entry.query;
+
+    const sub = document.createElement("div");
+    sub.className = "hist-sub";
+    sub.textContent = timeAgo(entry.ts);
+
+    main.appendChild(label);
+    main.appendChild(sub);
+    main.addEventListener("click", () => revisit(entry));
+
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "hist-del";
+    del.setAttribute("aria-label", "Remove this search from history");
+    del.textContent = "×";
+    del.addEventListener("click", () => removeHistory(entry.id));
+
+    item.appendChild(main);
+    item.appendChild(del);
+    historyListEl.appendChild(item);
+  });
+}
+
+/* Re-run a stored search without re-geocoding */
+function revisit(entry) {
+  showView("search");
+  addressInput.value = entry.query;
+  toggleClearBtn();
+  addHistory(entry.query, entry); // bump to top with a fresh timestamp
+  runSearch(entry);
+}
+
+function showView(view) {
+  const isHistory = view === "history";
+  document.body.classList.toggle("view-history", isHistory);
+  navSearchBtn.classList.toggle("active", !isHistory);
+  navHistoryBtn.classList.toggle("active", isHistory);
+  navSearchBtn.setAttribute("aria-current", isHistory ? "false" : "page");
+  navHistoryBtn.setAttribute("aria-current", isHistory ? "page" : "false");
+  if (isHistory) {
+    renderHistory();
+  } else {
+    map.invalidateSize(); // map was hidden; recompute size so panning/fitBounds work
+  }
+}
+
+navSearchBtn.addEventListener("click", () => showView("search"));
+navHistoryBtn.addEventListener("click", () => showView("history"));
+brandBtn.addEventListener("click", () => showView("search"));
+historyClearBtn.addEventListener("click", () => {
+  searchHistory = [];
+  saveHistory();
+  renderHistory();
+});
+
+renderHistory(); // populate list on load
 
 /* ---------- UI helpers ---------- */
 function setStatus(msg, { busy = false, error = false } = {}) {
@@ -672,26 +963,16 @@ function escapeHtml(s) {
 }
 
 /* ---------- The core loop ---------- */
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const query = addressInput.value.trim();
-  if (!query) return;
 
+/* Center + pin + 1 mi circle, query EPA, render. Reused by new searches
+   and by revisiting history (which already knows the coordinates). */
+async function runSearch(place) {
   searchBtn.disabled = true;
   setNote("");
   resultsEl.innerHTML = "";
 
   try {
-    /* 1. Geocode */
-    setStatus("Finding address\u2026", { busy: true });
-    const place = await geocode(query);
-    if (!place) {
-      setStatus("Address not found \u2014 try adding city and state.", { error: true });
-      setNote("Search an address to begin.");
-      return;
-    }
-
-    /* 2. Center, pin, circle */
+    /* Center, pin, circle */
     homeLayer.clearLayers();
     circleLayer.clearLayers();
     facilityLayer.clearLayers();
@@ -712,12 +993,12 @@ form.addEventListener("submit", async (e) => {
 
     map.fitBounds(circleLayer.getLayers()[0].getBounds(), { padding: [24, 24] });
 
-    /* 3. Query EPA TRI */
+    /* Query EPA TRI */
     setStatus("Checking EPA records\u2026", { busy: true });
     const geojson = await fetchTri(place.lng, place.lat);
     clearStatus();
 
-    /* 4. List nearest-first */
+    /* List nearest-first */
     renderResults(geojson.features || [], place);
 
   } catch (err) {
@@ -727,6 +1008,31 @@ form.addEventListener("submit", async (e) => {
   } finally {
     searchBtn.disabled = false;
   }
+}
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const query = addressInput.value.trim();
+  if (!query) return;
+
+  searchBtn.disabled = true;
+  setStatus("Finding address\u2026", { busy: true });
+
+  let place = null;
+  try {
+    place = await geocode(query);
+  } catch (err) {
+    console.error(err);
+  }
+
+  if (!place) {
+    setStatus("Address not found \u2014 try adding city and state.", { error: true });
+    searchBtn.disabled = false;
+    return;
+  }
+
+  addHistory(query, place); // record before fetching results
+  await runSearch(place);
 });
 </script>
 </body>
