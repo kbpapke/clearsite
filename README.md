@@ -8,6 +8,9 @@ Free stack, zero signups for local testing: Leaflet + OpenStreetMap tiles, the A
 World geocoder (Nominatim fallback), Turf.js, EPA's public ArcGIS service, and the OSM
 Overpass API. No API keys.
 
+A base-map switcher (top-right of the map) toggles between the **Map** (OpenStreetMap
+streets) and **Satellite** (Esri World Imagery with place labels) views.
+
 ## Sharing & links
 
 - Every search updates the URL with `?q=<address>`, so the address bar is always a

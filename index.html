@@ -334,6 +334,17 @@
 
   .leaflet-popup-content { font-family: var(--body); font-size: 13px; }
 
+  /* Base-map switcher (Map / Satellite) */
+  .leaflet-control-layers {
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(31, 42, 36, 0.12);
+  }
+  .leaflet-control-layers-expanded { padding: 8px 12px 8px 10px; font-family: var(--body); }
+  .leaflet-control-layers-list { font-size: 13px; color: var(--ink); }
+  .leaflet-control-layers label { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
+  .leaflet-control-layers input { accent-color: var(--moss); }
+
   /* ---------- Top bar: brand + view menu ---------- */
   #topbar {
     flex-shrink: 0;
@@ -936,10 +947,27 @@ function gradeFor(points) { return GRADES.find(g => points <= g.max); }
 /* ---------- Map setup ---------- */
 const map = L.map("map", { zoomControl: true }).setView([ANN_ARBOR.lat, ANN_ARBOR.lng], 12);
 
-L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+/* Base maps: street (default) and satellite (Esri imagery + place labels) */
+const streetTiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-}).addTo(map);
+});
+const satelliteTiles = L.layerGroup([
+  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+    maxZoom: 19,
+    attribution: 'Imagery &copy; <a href="https://www.esri.com/">Esri</a>, Maxar, Earthstar Geographics'
+  }),
+  // transparent street/place labels so the satellite view stays legible
+  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {
+    maxZoom: 19, opacity: 0.9
+  })
+]);
+streetTiles.addTo(map);
+L.control.layers(
+  { "Map": streetTiles, "Satellite": satelliteTiles },
+  null,
+  { position: "topright" }
+).addTo(map);
 
 /* Layer groups so each new search wipes the old state cleanly */
 const homeLayer = L.layerGroup().addTo(map);
