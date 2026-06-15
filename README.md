@@ -19,6 +19,15 @@ Overpass API. No API keys.
   `https://www.zillow.com/homedetails/3736-Highlander-Way-W-Ann-Arbor-MI-48108/24720986_zpid/?utm_source=txtshare`
   — and the app strips the marketing tags, extracts the address, and searches it.
 
+## Install as an app (PWA)
+
+The site is an installable Progressive Web App: a web manifest (`manifest.webmanifest`),
+icons, and a service worker (`sw.js`) ship with it. On Android/desktop Chrome/Edge an
+**Install** banner appears (dismissible, remembered); on iOS Safari use Share → "Add to
+Home Screen". Installed, it opens standalone (no browser chrome). The service worker
+caches the app shell so the page loads instantly and survives flaky connections (live
+data still needs the network).
+
 ## Geocoding
 
 The ArcGIS World geocoder is tried first (strong US street-address coverage, CORS-friendly,
