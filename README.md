@@ -22,6 +22,17 @@ streets) and **Satellite** (Esri World Imagery with place labels) views.
   `https://www.zillow.com/homedetails/3736-Highlander-Way-W-Ann-Arbor-MI-48108/24720986_zpid/?utm_source=txtshare`
   — and the app strips the marketing tags, extracts the address, and searches it.
 
+## Air traffic / flight paths
+
+A separate **Air traffic** gauge (not a concern layer, not part of the score) flags
+overhead-flight exposure near the address using the **OpenSky Network** (free, no key).
+It accumulates distinct aircraft seen within ~15 mi over the last few minutes and shows a
+**Clear → Light → Moderate → Heavy** badge — warning when traffic is significant — plus
+optional direction-vector "flight path" hints on the map (toggle in the card), refreshed
+every 60s. Flightradar24 is **not** used: it has no open API and prohibits scraping.
+OpenSky's anonymous quota is shared and modest; for heavier use, add OpenSky OAuth
+credentials to the proxy.
+
 ## Install as an app (PWA)
 
 The site is an installable Progressive Web App: a web manifest (`manifest.webmanifest`),

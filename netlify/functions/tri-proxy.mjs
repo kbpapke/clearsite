@@ -6,6 +6,7 @@
 const EPA_BASE =
   "https://geopub.epa.gov/ArcGIS/rest/services/EMEF/efpoints/MapServer";
 const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+const OPENSKY_URL = "https://opensky-network.org/api/states/all";
 
 const MAX_RADIUS_M = 20000; // hard cap to keep queries bounded
 
@@ -13,6 +14,7 @@ export default async (req) => {
   const url = new URL(req.url);
   if (url.pathname.endsWith("/epa")) return handleEpa(url);
   if (url.pathname.endsWith("/osm")) return handleOsm(url);
+  if (url.pathname.endsWith("/flights")) return handleFlights(url);
   return Response.json({ error: "Not found" }, { status: 404 });
 };
 
@@ -105,6 +107,38 @@ function overpassQuery(lat, lng) {
   );
 }
 
+/* ---------- OpenSky Network (live aircraft in a bounding box) ----------
+   Flightradar24 has no free/open API and prohibits scraping; OpenSky is the
+   free, ToS-friendly source for live aircraft state vectors. */
+async function handleFlights(url) {
+  const lamin = Number(url.searchParams.get("lamin"));
+  const lomin = Number(url.searchParams.get("lomin"));
+  const lamax = Number(url.searchParams.get("lamax"));
+  const lomax = Number(url.searchParams.get("lomax"));
+
+  const ok = [lamin, lomin, lamax, lomax].every(Number.isFinite) &&
+    lamin >= -90 && lamax <= 90 && lamin < lamax &&
+    lomin >= -180 && lomax <= 180 && lomin < lomax &&
+    (lamax - lamin) <= 3 && (lomax - lomin) <= 3; // cap the box size
+  if (!ok) {
+    return Response.json({ error: "valid bounding box required" }, { status: 400 });
+  }
+
+  const params = new URLSearchParams({
+    lamin: String(lamin), lomin: String(lomin), lamax: String(lamax), lomax: String(lomax)
+  });
+  try {
+    const upstream = await fetch(`${OPENSKY_URL}?${params}`);
+    if (!upstream.ok) {
+      return Response.json({ error: `OpenSky returned ${upstream.status}` }, { status: 502 });
+    }
+    const data = await upstream.json();
+    return Response.json(data, { headers: { "Cache-Control": "public, max-age=20" } });
+  } catch (err) {
+    return Response.json({ error: "OpenSky request failed" }, { status: 502 });
+  }
+}
+
 function validLatLng(lat, lng) {
   return (
     Number.isFinite(lat) && Number.isFinite(lng) &&
@@ -113,5 +147,5 @@ function validLatLng(lat, lng) {
 }
 
 export const config = {
-  path: ["/api/epa", "/api/osm"],
+  path: ["/api/epa", "/api/osm", "/api/flights"],
 };

@@ -630,6 +630,64 @@
   .bd-dist { color: var(--ink-soft); font-variant-numeric: tabular-nums; flex-shrink: 0; }
   .bd-note { font-size: 11.5px; color: var(--ink-soft); margin-top: 8px; line-height: 1.5; }
 
+  /* ---------- Air-traffic (flights) card ---------- */
+  #flights-card { display: none; border-bottom: 1px solid var(--hairline); }
+  #flights-card.show { display: block; }
+  .flt-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+    border-left: 4px solid transparent;
+  }
+  .flt-top.warn { border-left-color: var(--flt-color, var(--signal)); background: rgba(180, 84, 30, 0.06); }
+  .flt-badge {
+    flex-shrink: 0;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 7px;
+  }
+  .flt-text { flex: 1; min-width: 0; }
+  .flt-head {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .flt-summary { font-size: 12.5px; line-height: 1.4; margin-top: 3px; }
+  .flt-foot {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 18px 11px;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+  .flt-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .flt-toggle input { width: 14px; height: 14px; accent-color: var(--moss); cursor: pointer; }
+  .flt-refresh {
+    margin-left: auto;
+    font: inherit;
+    font-size: 12px;
+    color: var(--moss);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 4px;
+  }
+  .flt-refresh:hover { text-decoration: underline; }
+  .flt-refresh:focus-visible, .flt-toggle input:focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; }
+  .flt-updated { font-variant-numeric: tabular-nums; }
+
+  /* Plane markers (direction = heading) */
+  .plane-mark svg { display: block; filter: drop-shadow(0 1px 1px rgba(31,42,36,0.5)); }
+
   /* ---------- Layer toggles ---------- */
   #layers-panel { display: none; border-bottom: 1px solid var(--hairline); }
   #layers-panel.show { display: block; }
@@ -849,6 +907,8 @@
 
     <div id="score-card" aria-live="polite"></div>
 
+    <div id="flights-card" aria-live="polite"></div>
+
     <div id="status" role="status"></div>
 
     <div id="layers-panel">
@@ -989,6 +1049,7 @@ const navHistoryBtn = document.getElementById("nav-history");
 const historyListEl = document.getElementById("history-list");
 const historyClearBtn = document.getElementById("history-clear");
 const scoreCard = document.getElementById("score-card");
+const flightsCard = document.getElementById("flights-card");
 const layersPanel = document.getElementById("layers-panel");
 const layersSummary = document.getElementById("layers-summary");
 const layersSummaryCount = document.getElementById("layers-summary-count");
@@ -1734,6 +1795,16 @@ function renderLegend() {
     row.appendChild(sw); row.appendChild(info);
     legendBody.appendChild(row);
   });
+
+  // Air traffic (not a concern layer / not scored)
+  const fr = document.createElement("div");
+  fr.className = "legend-row";
+  fr.innerHTML =
+    '<span class="legend-swatch" style="background:#283593"></span>' +
+    '<div class="legend-info"><div class="legend-name">Air traffic / flight paths</div>' +
+    '<div class="legend-meta">Within ~15 mi · OpenSky Network (live aircraft)</div>' +
+    '<div class="legend-disclaimer">A snapshot-based gauge of overhead traffic, not a complete or real-time record. Flightradar24 is not used (no open API).</div></div>';
+  legendBody.appendChild(fr);
 }
 function openLegend() { legendOverlay.classList.add("show"); }
 function closeLegend() { legendOverlay.classList.remove("show"); }
@@ -1748,6 +1819,208 @@ layersSummary.addEventListener("click", () => {
   layersSummary.setAttribute("aria-expanded", String(!open));
   layersList.hidden = open;
 });
+
+/* ===================================================================
+   Air traffic / flight paths (OpenSky Network)
+   Not a concern layer and not part of the score — a live exposure gauge
+   that warns when there's heavy overhead traffic. We accumulate distinct
+   aircraft seen over a few minutes so it reflects a corridor, not one instant.
+=================================================================== */
+const FLIGHT_RADIUS_MI = 15;
+const FLIGHT_WINDOW_MS = 5 * 60 * 1000;
+const FLIGHT_REFRESH_MS = 60000;
+const flightLayer = L.layerGroup();
+let flightTimer = null;
+let flightOrigin = null;
+let flightSeen = new Map();   // icao24 -> { ts, altFt } seen within the window
+let flightCurrent = [];       // latest snapshot, for redraw on toggle
+let flightShowOnMap = true;
+let flightLastUpdate = 0;
+let flightState = "idle";     // idle | loading | ok | error
+
+function flightBbox(o) {
+  const dLat = 0.35, dLon = 0.45; // ~24 mi box
+  return { lamin: o.lat - dLat, lomin: o.lng - dLon, lamax: o.lat + dLat, lomax: o.lng + dLon };
+}
+
+async function fetchFlights(b) {
+  // OpenSky's CORS only allows its own origin, so we always go via the proxy.
+  const res = await fetch("/api/flights?lamin=" + b.lamin + "&lomin=" + b.lomin + "&lamax=" + b.lamax + "&lomax=" + b.lomax);
+  if (!res.ok) throw new Error("flights " + res.status);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+function startFlightTracking(origin) {
+  flightOrigin = origin;
+  flightSeen.clear();
+  flightCurrent = [];
+  flightLastUpdate = 0;
+  stopFlightTimer();
+  refreshFlights();
+  flightTimer = setInterval(() => {
+    if (document.visibilityState === "visible") refreshFlights();
+  }, FLIGHT_REFRESH_MS);
+}
+function stopFlightTimer() { if (flightTimer) { clearInterval(flightTimer); flightTimer = null; } }
+
+async function refreshFlights() {
+  if (!flightOrigin) return;
+  flightState = "loading";
+  renderFlightCard();
+  try {
+    const data = await fetchFlights(flightBbox(flightOrigin));
+    processFlights(data, flightOrigin);
+    flightLastUpdate = Date.now();
+    flightState = "ok";
+  } catch (e) {
+    console.error("flights:", e);
+    flightState = "error";
+  }
+  renderFlightCard();
+}
+
+function processFlights(data, origin) {
+  const from = turf.point([origin.lng, origin.lat]);
+  const now = Date.now();
+  const states = (data && data.states) || [];
+  const current = [];
+  states.forEach(s => {
+    const lon = s[5], lat = s[6];
+    if (typeof lat !== "number" || typeof lon !== "number") return;
+    if (s[8]) return; // on_ground
+    const distMi = turf.distance(from, turf.point([lon, lat]), { units: "miles" });
+    if (distMi > FLIGHT_RADIUS_MI) return;
+    const altM = (typeof s[7] === "number") ? s[7] : (typeof s[13] === "number" ? s[13] : null);
+    const altFt = altM != null ? altM * 3.28084 : null;
+    current.push({
+      icao: s[0], callsign: (s[1] || "").trim(), country: s[2] || "",
+      lat: lat, lon: lon, altFt: altFt,
+      track: (typeof s[10] === "number") ? s[10] : 0,
+      speedKt: (typeof s[9] === "number") ? s[9] * 1.94384 : null,
+      distMi: distMi, bearing: turf.bearing(from, turf.point([lon, lat]))
+    });
+    flightSeen.set(s[0], { ts: now, altFt: altFt });
+  });
+  for (const [k, v] of flightSeen) { if (now - v.ts > FLIGHT_WINDOW_MS) flightSeen.delete(k); }
+  flightCurrent = current.sort((a, b) => a.distMi - b.distMi);
+  drawFlights();
+}
+
+function flightLevel() {
+  const all = [...flightSeen.values()];
+  const n = all.length;
+  const low = all.filter(v => v.altFt != null && v.altFt < 10000).length;
+  if (n >= 8 || low >= 4) return { label: "Heavy", color: "#C62828", warn: true };
+  if (n >= 4 || low >= 2) return { label: "Moderate", color: "#EF6C00", warn: true };
+  if (n >= 1) return { label: "Light", color: "#558B2F", warn: false };
+  return { label: "Clear", color: "#2E7D32", warn: false };
+}
+
+function altColor(ft) {
+  if (ft == null) return "#283593";
+  if (ft < 5000) return "#C62828";
+  if (ft < 15000) return "#EF6C00";
+  if (ft < 30000) return "#1565C0";
+  return "#90A4AE";
+}
+
+function planeSvg(color, track) {
+  return '<div class="plane-mark"><svg width="18" height="18" viewBox="0 0 24 24" style="transform:rotate(' + track + 'deg)" aria-hidden="true">' +
+    '<path d="M12 2 L13.4 12.2 L22 16.4 L22 18.2 L13.4 15.8 L13.4 20.6 L16 22.4 L16 23.6 L12 22.2 L8 23.6 L8 22.4 L10.6 20.6 L10.6 15.8 L2 18.2 L2 16.4 L10.6 12.2 Z" fill="' + color + '"/>' +
+    '</svg></div>';
+}
+
+function drawFlights() {
+  flightLayer.clearLayers();
+  if (!flightShowOnMap) { map.removeLayer(flightLayer); return; }
+  flightCurrent.forEach(r => {
+    const color = altColor(r.altFt);
+    // short vector ahead of the aircraft = flight-path direction hint
+    const head = turf.destination(turf.point([r.lon, r.lat]), 3, r.track, { units: "kilometers" }).geometry.coordinates;
+    L.polyline([[r.lat, r.lon], [head[1], head[0]]], { color: color, weight: 2.5, opacity: 0.75 }).addTo(flightLayer);
+    L.marker([r.lat, r.lon], {
+      icon: L.divIcon({ className: "", html: planeSvg(color, r.track), iconSize: [18, 18], iconAnchor: [9, 9] }),
+      title: r.callsign || r.icao
+    }).bindPopup(
+      "<strong>" + escapeHtml(r.callsign || r.icao) + "</strong><br>" +
+      (r.country ? escapeHtml(r.country) + "<br>" : "") +
+      (r.altFt != null ? Math.round(r.altFt).toLocaleString() + " ft" : "altitude n/a") +
+      (r.speedKt != null ? " · " + Math.round(r.speedKt) + " kt" : "") + "<br>" +
+      r.distMi.toFixed(1) + " mi " + compassPoint(r.bearing) + " of address"
+    ).addTo(flightLayer);
+  });
+  flightLayer.addTo(map);
+}
+
+function renderFlightCard() {
+  flightsCard.className = "show";
+  flightsCard.innerHTML = "";
+
+  if (flightState === "error" && flightSeen.size === 0) {
+    const top = document.createElement("div");
+    top.className = "flt-top";
+    top.innerHTML = '<span class="flt-text"><span class="flt-head">Air traffic</span>' +
+      '<span class="flt-summary">Live flight data is unavailable right now.</span></span>';
+    flightsCard.appendChild(top);
+    const foot = document.createElement("div");
+    foot.className = "flt-foot";
+    const btn = document.createElement("button");
+    btn.className = "flt-refresh"; btn.type = "button"; btn.textContent = "Try again";
+    btn.style.marginLeft = "auto";
+    btn.addEventListener("click", refreshFlights);
+    foot.appendChild(btn);
+    flightsCard.appendChild(foot);
+    return;
+  }
+
+  const lvl = flightLevel();
+  const n = flightSeen.size;
+  const low = [...flightSeen.values()].filter(v => v.altFt != null && v.altFt < 10000).length;
+
+  const top = document.createElement("div");
+  top.className = "flt-top" + (lvl.warn ? " warn" : "");
+  top.style.setProperty("--flt-color", lvl.color);
+  const badge = document.createElement("span");
+  badge.className = "flt-badge";
+  badge.style.background = lvl.color;
+  badge.textContent = (lvl.warn ? "⚠ " : "") + lvl.label;
+  const text = document.createElement("div");
+  text.className = "flt-text";
+  const head = document.createElement("div");
+  head.className = "flt-head";
+  head.textContent = "Air traffic";
+  const summary = document.createElement("div");
+  summary.className = "flt-summary";
+  summary.textContent = n === 0
+    ? "No aircraft tracked within ~" + FLIGHT_RADIUS_MI + " mi right now."
+    : n + " aircraft tracked within ~" + FLIGHT_RADIUS_MI + " mi over the last few minutes" +
+      (low ? " (" + low + " below 10,000 ft)" : "") + ".";
+  text.appendChild(head); text.appendChild(summary);
+  top.appendChild(badge); top.appendChild(text);
+  flightsCard.appendChild(top);
+
+  const foot = document.createElement("div");
+  foot.className = "flt-foot";
+  const tog = document.createElement("label");
+  tog.className = "flt-toggle";
+  const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = flightShowOnMap;
+  cb.addEventListener("change", () => { flightShowOnMap = cb.checked; drawFlights(); });
+  const tlabel = document.createElement("span"); tlabel.textContent = "Show paths on map";
+  tog.appendChild(cb); tog.appendChild(tlabel);
+  foot.appendChild(tog);
+
+  const refresh = document.createElement("button");
+  refresh.className = "flt-refresh"; refresh.type = "button";
+  refresh.textContent = flightState === "loading"
+    ? "Updating…"
+    : (flightLastUpdate ? "Updated " + timeAgo(flightLastUpdate) + " · Refresh" : "Refresh");
+  refresh.addEventListener("click", refreshFlights);
+  foot.appendChild(refresh);
+
+  flightsCard.appendChild(foot);
+}
 
 /* Build one "label / value" pair in a detail list; skips empty values */
 function addDetail(dl, label, value) {
@@ -1783,11 +2056,15 @@ async function runSearch(place) {
   setNote("");
   resultsEl.innerHTML = "";
   scoreCard.className = "";
+  flightsCard.className = "";
   layersPanel.className = "";
 
   /* Address pin + 1-mile reference ring */
   homeLayer.clearLayers();
   clearConcernGroups();
+  stopFlightTimer();
+  flightLayer.clearLayers();
+  map.removeLayer(flightLayer);
   L.marker([place.lat, place.lng], {
     icon: L.divIcon({ className: "", html: '<div class="home-pin"></div>', iconSize: [16, 16], iconAnchor: [8, 8] }),
     title: "Searched address"
@@ -1843,6 +2120,8 @@ async function runSearch(place) {
 
   renderAll(byLayer, place);
   searchBtn.disabled = false;
+
+  startFlightTracking(place); // live air-traffic gauge (independent of the score)
 }
 
 /* Geocode a raw query (typed address or Zillow link), then run the search.
