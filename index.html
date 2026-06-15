@@ -466,7 +466,8 @@
     justify-content: space-between;
     gap: 10px;
   }
-  #legend-btn {
+  .panel-head-actions { display: flex; gap: 7px; flex-shrink: 0; }
+  #legend-btn, #share-btn {
     flex-shrink: 0;
     font: inherit;
     font-size: 12px;
@@ -477,8 +478,32 @@
     padding: 5px 10px;
     cursor: pointer;
   }
-  #legend-btn:hover { background: var(--moss-tint); }
-  #legend-btn:focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; }
+  #legend-btn:hover, #share-btn:hover { background: var(--moss-tint); }
+  #legend-btn:focus-visible, #share-btn:focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; }
+  #share-btn { background: var(--moss); color: #fff; border-color: var(--moss); }
+  #share-btn:hover { background: #335B42; }
+  #share-btn[hidden] { display: none; }
+
+  /* Transient confirmation toast */
+  #toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%) translateY(12px);
+    z-index: 2500;
+    background: var(--ink);
+    color: #fff;
+    font-size: 13px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(31, 42, 36, 0.3);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    max-width: calc(100vw - 32px);
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  @media (prefers-reduced-motion: reduce) { #toast { transition: opacity 0.2s ease; } }
 
   /* ---------- Address score card ---------- */
   #score-card { display: none; border-bottom: 1px solid var(--hairline); }
@@ -743,7 +768,10 @@
     <div id="panel-head">
       <div class="panel-head-row">
         <div id="panel-title">Nearby concerns</div>
-        <button id="legend-btn" type="button" aria-haspopup="dialog">ⓘ Legend</button>
+        <div class="panel-head-actions">
+          <button id="share-btn" type="button" hidden>Share</button>
+          <button id="legend-btn" type="button" aria-haspopup="dialog">ⓘ Legend</button>
+        </div>
       </div>
       <div id="panel-sub">Environmental &amp; infrastructure concerns near the searched address, with distance and direction. Informational only — you weigh it.</div>
     </div>
@@ -777,6 +805,8 @@
   </div>
   <div id="history-list"></div>
 </section>
+
+<div id="toast" role="status" aria-live="polite"></div>
 
 <div id="legend-overlay" role="dialog" aria-modal="true" aria-labelledby="legend-modal-title">
   <div id="legend-modal">
@@ -879,6 +909,9 @@ const legendBtn = document.getElementById("legend-btn");
 const legendOverlay = document.getElementById("legend-overlay");
 const legendClose = document.getElementById("legend-close");
 const legendBody = document.getElementById("legend-body");
+const shareBtn = document.getElementById("share-btn");
+const toastEl = document.getElementById("toast");
+let currentQuery = null; // the address backing the current results (for share/URL)
 
 /* ---------- Clear button: show only when there's text; reset + refocus ---------- */
 function toggleClearBtn() {
@@ -996,6 +1029,7 @@ function revisit(entry) {
   addressInput.value = entry.query;
   toggleClearBtn();
   addHistory(entry.query, entry); // bump to top with a fresh timestamp
+  setShareState(entry.query);
   runSearch(entry);
 }
 
@@ -1068,20 +1102,56 @@ function bearingArrow(bearing) {
   return wrap;
 }
 
-/* ---------- Geocoding (Nominatim — plain fetch, NO custom headers) ---------- */
+/* ---------- Geocoding ----------
+   ArcGIS World geocoder first (best US street-address coverage, CORS-friendly,
+   no key needed), then Nominatim as a fallback for places it can't resolve. */
 async function geocode(query) {
-  const url =
-    "https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q=" +
-    encodeURIComponent(query);
-  const res = await fetch(url); // no headers: avoids CORS preflight
-  if (!res.ok) throw new Error("Geocoder returned " + res.status);
-  const data = await res.json();
-  if (!Array.isArray(data) || data.length === 0) return null;
-  return {
-    lat: parseFloat(data[0].lat),
-    lng: parseFloat(data[0].lon),
-    label: data[0].display_name || query
-  };
+  // 1) ArcGIS World geocoder
+  try {
+    const url = "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates" +
+      "?f=json&countryCode=USA&maxLocations=1&outFields=Match_addr&singleLine=" + encodeURIComponent(query);
+    const res = await fetch(url);
+    if (res.ok) {
+      const d = await res.json();
+      const c = d.candidates && d.candidates[0];
+      if (c && c.location && Number.isFinite(c.location.y) && Number.isFinite(c.location.x)) {
+        return { lat: c.location.y, lng: c.location.x, label: c.address || query };
+      }
+    }
+  } catch (e) { /* fall through to Nominatim */ }
+
+  // 2) Nominatim fallback
+  try {
+    const res = await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=us&q=" + encodeURIComponent(query));
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length) {
+        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), label: data[0].display_name || query };
+      }
+    }
+  } catch (e) { /* no match */ }
+
+  return null;
+}
+
+/* Turn a pasted Zillow listing URL into a plain, geocodable address.
+   Marketing query params (utm_*, etc.) are dropped — only the path slug is used.
+   e.g. .../homedetails/3736-Highlander-Way-W-Ann-Arbor-MI-48108/24720986_zpid/?utm...
+        -> "3736 Highlander Way W Ann Arbor MI 48108" */
+function parseZillow(input) {
+  const m = String(input).match(/zillow\.com\/homedetails\/([^/?#]+)\/\d+_zpid/i);
+  if (!m) return null;
+  try {
+    return decodeURIComponent(m[1]).replace(/-/g, " ").replace(/\s+/g, " ").trim();
+  } catch (e) {
+    return m[1].replace(/-/g, " ").trim();
+  }
+}
+
+/* Normalize raw input (typed address, share link, or Zillow URL) into a query */
+function normalizeQuery(input) {
+  const s = (input || "").trim();
+  return parseZillow(s) || s;
 }
 
 /* ===================================================================
@@ -1684,10 +1754,14 @@ async function runSearch(place) {
   searchBtn.disabled = false;
 }
 
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const query = addressInput.value.trim();
+/* Geocode a raw query (typed address or Zillow link), then run the search.
+   Shared by the form, history revisit, and shareable-URL loading. */
+async function doSearch(rawQuery) {
+  const query = normalizeQuery(rawQuery);
   if (!query) return;
+
+  addressInput.value = query; // reflect the cleaned address (esp. for Zillow links)
+  toggleClearBtn();
 
   searchBtn.disabled = true;
   setStatus("Finding address\u2026", { busy: true });
@@ -1706,8 +1780,62 @@ form.addEventListener("submit", async (e) => {
   }
 
   addHistory(query, place); // record before fetching results
+  setShareState(query);
   await runSearch(place);
+}
+
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const raw = addressInput.value.trim();
+  if (raw) doSearch(raw);
 });
+
+/* Reflect the current search in the URL + reveal the Share button */
+function setShareState(query) {
+  currentQuery = query;
+  try {
+    history.replaceState(null, "", location.pathname + "?q=" + encodeURIComponent(query));
+  } catch (e) { /* ignore (e.g. file://) */ }
+  shareBtn.hidden = false;
+}
+
+function shareUrl() {
+  return location.origin + location.pathname + "?q=" + encodeURIComponent(currentQuery || "");
+}
+
+shareBtn.addEventListener("click", async () => {
+  if (!currentQuery) return;
+  const url = shareUrl();
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: "Healthy Homes", text: "Nearby concerns for " + currentQuery, url: url });
+      return;
+    } catch (e) {
+      if (e && e.name === "AbortError") return; // user dismissed the share sheet
+      // otherwise fall through to clipboard copy
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast("Link copied to clipboard");
+  } catch (e) {
+    showToast("Copy failed \u2014 " + url);
+  }
+});
+
+let toastTimer = null;
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2600);
+}
+
+/* On load: if the URL carries ?q=, run that search (supports shared & Zillow links) */
+(function loadFromUrl() {
+  const q = new URLSearchParams(location.search).get("q");
+  if (q) doSearch(q);
+})();
 </script>
 </body>
 </html>

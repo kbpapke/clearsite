@@ -4,8 +4,26 @@ Type a street address → see environmental and infrastructure concerns near it 
 map, with **distance + compass direction** to each, an **A+–E address score**, and a
 **legend** explaining every layer and its data source.
 
-Free stack, zero signups for local testing: Leaflet + OpenStreetMap tiles, Nominatim
-geocoding, Turf.js, EPA's public ArcGIS service, and the OSM Overpass API. No API keys.
+Free stack, zero signups for local testing: Leaflet + OpenStreetMap tiles, the ArcGIS
+World geocoder (Nominatim fallback), Turf.js, EPA's public ArcGIS service, and the OSM
+Overpass API. No API keys.
+
+## Sharing & links
+
+- Every search updates the URL with `?q=<address>`, so the address bar is always a
+  shareable, copy-pasteable link.
+- The **Share** button uses the native share sheet on mobile and copies the link to the
+  clipboard on desktop.
+- Opening a `?q=` link (shared from the app or pasted) runs that search automatically.
+- **Zillow links just work.** Paste a Zillow listing URL — e.g.
+  `https://www.zillow.com/homedetails/3736-Highlander-Way-W-Ann-Arbor-MI-48108/24720986_zpid/?utm_source=txtshare`
+  — and the app strips the marketing tags, extracts the address, and searches it.
+
+## Geocoding
+
+The ArcGIS World geocoder is tried first (strong US street-address coverage, CORS-friendly,
+no key), with Nominatim as a fallback. This resolves typical residential addresses that
+OSM-only geocoding misses.
 
 ## Run it locally (no install)
 
