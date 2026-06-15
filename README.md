@@ -1,10 +1,11 @@
-# ClearSite — core-loop MVP
+# Healthy Homes — environmental home-search tool
 
-Type a street address → see EPA Toxics Release Inventory (TRI) facilities within
-1 mile, on a map and in a nearest-first list with distance + compass bearing.
+Type a street address → see environmental and infrastructure concerns near it on a
+map, with **distance + compass direction** to each, an **A+–E address score**, and a
+**legend** explaining every layer and its data source.
 
-Free stack, zero signups for local testing: Leaflet + OpenStreetMap tiles,
-Nominatim geocoding, Turf.js, EPA's public ArcGIS service. No API keys.
+Free stack, zero signups for local testing: Leaflet + OpenStreetMap tiles, Nominatim
+geocoding, Turf.js, EPA's public ArcGIS service, and the OSM Overpass API. No API keys.
 
 ## Run it locally (no install)
 
@@ -15,58 +16,74 @@ Open `index.html` in a browser. That's it.
   (Dexter, Saline, Ypsilanti, Canton, Whitmore Lake, Pinckney...).
 - Include city + state for the best geocoder hits.
 
-If the EPA request is ever blocked by CORS in your browser, the sidebar will
-say so cleanly — that's the signal to deploy to Netlify, where the included
-serverless proxy takes over automatically.
+If a data request is blocked by CORS in your browser, the app retries through the
+bundled Netlify proxy automatically (only meaningful once deployed over http(s)).
 
-## Deploy to Netlify (free tier — needs a Netlify login, pick one path)
+## Concern layers
 
-**Path A — drag and drop (fastest):**
-1. Go to https://app.netlify.com/drop
-2. Drag this whole `clearsite` folder onto the page.
-3. Done — you get a live URL. (Drop deploys include the `netlify/functions`
-   folder, so the proxy works.)
+Each layer scans the address out to its own radius. Toggle any layer on/off in the
+sidebar. Superfund and Brownfields are shown as **labels only** (no radius ring) —
+their risk extent depends on the specific contaminants.
 
-**Path B — Git auto-deploy:**
-1. Push this folder to a GitHub repo.
-2. In Netlify: "Add new site" → "Import an existing project" → pick the repo.
-3. Build settings are read from `netlify.toml` automatically. Every push deploys.
+| Layer | Radius | Source |
+|-------|--------|--------|
+| Superfund sites | 3 mi (labels only) | EPA CERCLIS |
+| Hazardous waste | 1 mi | EPA RCRA handlers |
+| Toxic releases (TRI) | 1 mi | EPA Toxics Release Inventory |
+| Air pollution | 1 mi | EPA air-emissions facilities |
+| Water dischargers | 1 mi | EPA NPDES |
+| Brownfields | 3 mi (labels only) | EPA ACRES (coverage patchy) |
+| Power lines | 0.5 mi | OpenStreetMap |
+| Cell / comm towers | 0.5 mi | OpenStreetMap (partial vs. FCC) |
+| Highways / freeways | 1 mi | OpenStreetMap (motorway + trunk) |
+| Airports | 5 mi | OpenStreetMap (aerodromes) |
+| Golf courses | 3 mi | OpenStreetMap |
+| Farms / cropland | 3 mi | OpenStreetMap (farmland) |
 
-**Path C — CLI:**
-```
-npm install -g netlify-cli
-cd clearsite
-netlify deploy --prod
-```
+The six EPA layers come from one ArcGIS service (`EMEF/efpoints` layers 0–5); the six
+OpenStreetMap layers come from a single Overpass query.
+
+## Address score (A+ – E)
+
+Each layer contributes a **capped** amount to a total "concern" number: its nearest
+source sets the base (more-hazardous layers weigh more × how close it is), plus a
+bounded bonus for additional nearby sources. The cap stops one dense layer (e.g. RCRA
+hazardous-waste handlers, which include dentists and auto shops) from dominating. The
+total maps to a letter grade. Weights and thresholds live in `LAYERS` / `GRADES` at
+the top of the inline script and are easy to tune.
+
+## Deploy to Netlify (free tier)
+
+**Git auto-deploy:** Netlify → "Add new site" → "Import an existing project" → pick the
+repo. Build settings are read from `netlify.toml`. Every push deploys. The live site is
+https://healthy-homes.netlify.app/.
 
 ## What's in here
 
 ```
-clearsite/
-├── index.html                      # the entire app (HTML + CSS + JS inline)
-├── netlify.toml                    # publish + functions config
-├── netlify/functions/tri-proxy.mjs # CORS-safe EPA proxy at /api/tri (fallback only)
+.
+├── index.html                       # the entire app (HTML + CSS + JS inline)
+├── netlify.toml                     # publish + functions config
+├── netlify/functions/tri-proxy.mjs  # CORS-safe proxy: /api/epa + /api/osm (fallback only)
 └── README.md
 ```
 
-## How the EPA fallback works
+## How the proxy works
 
-The app queries EPA directly from the browser first. If that fails (e.g. CORS),
-and the site is served over http(s), it retries the same query through
-`/api/tri` — the Netlify Function — which calls EPA server-side. The function
-is locked to the single EPA endpoint; it is not an open proxy.
+The app calls EPA and Overpass directly from the browser first. If a call fails (e.g.
+CORS) and the site is served over http(s), it retries through the Netlify Function:
+`/api/epa?layer=<0-5>&lat=&lng=&radius=` or `/api/osm?lat=&lng=`. The function is locked
+to those two upstreams and builds the Overpass query server-side — it is not an open proxy.
 
-## Next iterations (in order)
+## Next iterations
 
-1. Michigan EGLE Part 201 contamination sites as a second layer (best local data).
-2. Layer toggles in the sidebar.
-3. Superfund label-only layer (same EPA service, layer 0).
-4. SEMCOG farms, OSM golf courses / power lines, cell towers, freeways —
-   per the full build plan.
+1. Per-layer custom radius controls (post-MVP in the brief).
+2. Michigan EGLE Part 201 contamination sites as a state-specific layer.
+3. USDA CropScape crop-type detail for farmland.
+4. Richer FCC/utility-GIS tower & power-line data (needs keys or bulk loads).
 
 ## Usage etiquette (free services)
 
 - Nominatim: geocodes only on explicit search (never per keystroke); max ~1 req/s.
-- OSM tiles: fine for personal testing; swap to a commercial tile provider
-  before any real launch.
-- Attribution for OpenStreetMap is shown in the map corner and footer — keep it.
+- Overpass / OSM tiles: fine for personal testing; use a commercial provider before any
+  real launch. Keep OpenStreetMap attribution (shown in the map corner, footer, legend).

@@ -1,21 +1,35 @@
-// ClearSite — EPA TRI proxy (Netlify Function, Functions 2.0 style)
-// Exists only as a CORS safety net: the frontend tries EPA directly first
-// and falls back to /api/tri if the browser blocks the cross-origin call.
-// It only ever calls the one EPA endpoint below — it is not an open proxy.
+// Healthy Homes — data proxy (Netlify Function, Functions 2.0 style)
+// CORS safety net: the frontend calls EPA and Overpass directly first and
+// falls back to these endpoints if the browser blocks the cross-origin call.
+// Locked to two upstreams only (EPA Envirofacts + OSM Overpass) — not an open proxy.
 
-const EPA_TRI_URL =
-  "https://geopub.epa.gov/ArcGIS/rest/services/EMEF/efpoints/MapServer/1/query";
+const EPA_BASE =
+  "https://geopub.epa.gov/ArcGIS/rest/services/EMEF/efpoints/MapServer";
+const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
 
-const RADIUS_METERS = 1609.34; // 1 mile, fixed server-side
+const MAX_RADIUS_M = 20000; // hard cap to keep queries bounded
 
 export default async (req) => {
   const url = new URL(req.url);
+  if (url.pathname.endsWith("/epa")) return handleEpa(url);
+  if (url.pathname.endsWith("/osm")) return handleOsm(url);
+  return Response.json({ error: "Not found" }, { status: 404 });
+};
+
+/* ---------- EPA Envirofacts (efpoints layers 0-5) ---------- */
+async function handleEpa(url) {
   const lat = Number(url.searchParams.get("lat"));
   const lng = Number(url.searchParams.get("lng"));
+  const layer = Number(url.searchParams.get("layer"));
+  let radius = Number(url.searchParams.get("radius"));
+  if (!Number.isFinite(radius) || radius <= 0) radius = 1609.34;
+  radius = Math.min(radius, MAX_RADIUS_M);
 
-  if (!Number.isFinite(lat) || !Number.isFinite(lng) ||
-      lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-    return Response.json({ error: "lat and lng query params required" }, { status: 400 });
+  if (!validLatLng(lat, lng)) {
+    return Response.json({ error: "valid lat and lng required" }, { status: 400 });
+  }
+  if (!Number.isInteger(layer) || layer < 0 || layer > 5) {
+    return Response.json({ error: "layer must be 0-5" }, { status: 400 });
   }
 
   const params = new URLSearchParams({
@@ -25,26 +39,79 @@ export default async (req) => {
     inSR: "4326",
     outSR: "4326",
     spatialRel: "esriSpatialRelIntersects",
-    distance: String(RADIUS_METERS),
+    distance: String(radius),
     units: "esriSRUnit_Meter",
     outFields: "*",
     returnGeometry: "true",
   });
 
   try {
-    const upstream = await fetch(`${EPA_TRI_URL}?${params}`);
+    const upstream = await fetch(`${EPA_BASE}/${layer}/query?${params}`);
     if (!upstream.ok) {
       return Response.json({ error: `EPA returned ${upstream.status}` }, { status: 502 });
     }
     const data = await upstream.json();
-    return Response.json(data, {
-      headers: { "Cache-Control": "public, max-age=3600" },
-    });
+    return Response.json(data, { headers: { "Cache-Control": "public, max-age=3600" } });
   } catch (err) {
-    return Response.json({ error: "Upstream request failed" }, { status: 502 });
+    return Response.json({ error: "EPA request failed" }, { status: 502 });
   }
-};
+}
+
+/* ---------- OSM Overpass (infrastructure layers) ---------- */
+async function handleOsm(url) {
+  const lat = Number(url.searchParams.get("lat"));
+  const lng = Number(url.searchParams.get("lng"));
+  if (!validLatLng(lat, lng)) {
+    return Response.json({ error: "valid lat and lng required" }, { status: 400 });
+  }
+
+  // Query is built server-side from fixed filters/radii — the request body is
+  // never taken from the client, so this can't be used as an open Overpass proxy.
+  const query = overpassQuery(lat, lng);
+
+  try {
+    const upstream = await fetch(OVERPASS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "data=" + encodeURIComponent(query),
+    });
+    if (!upstream.ok) {
+      return Response.json({ error: `Overpass returned ${upstream.status}` }, { status: 502 });
+    }
+    const data = await upstream.json();
+    return Response.json(data, { headers: { "Cache-Control": "public, max-age=3600" } });
+  } catch (err) {
+    return Response.json({ error: "Overpass request failed" }, { status: 502 });
+  }
+}
+
+// Keep these filters/radii in sync with buildOverpassQuery() in index.html
+function overpassQuery(lat, lng) {
+  const a = (m) => `(around:${m},${lat},${lng})`;
+  return (
+    "[out:json][timeout:25];(" +
+    `way["power"="line"]${a(805)};` +
+    `node["man_made"="mast"]${a(805)};` +
+    `node["man_made"="communications_tower"]${a(805)};` +
+    `way["man_made"="communications_tower"]${a(805)};` +
+    `node["tower:type"="communication"]${a(805)};` +
+    `way["aeroway"="aerodrome"]${a(8047)};` +
+    `node["aeroway"="aerodrome"]${a(8047)};` +
+    `way["highway"="motorway"]${a(1609)};` +
+    `way["highway"="trunk"]${a(1609)};` +
+    `way["leisure"="golf_course"]${a(4828)};` +
+    `way["landuse"="farmland"]${a(4828)};` +
+    ");out geom 200;"
+  );
+}
+
+function validLatLng(lat, lng) {
+  return (
+    Number.isFinite(lat) && Number.isFinite(lng) &&
+    lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180
+  );
+}
 
 export const config = {
-  path: "/api/tri",
+  path: ["/api/epa", "/api/osm"],
 };

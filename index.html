@@ -459,6 +459,242 @@
   .hist-main:focus-visible,
   .hist-del:focus-visible { outline: 2px solid var(--moss); outline-offset: -2px; }
 
+  /* ---------- Panel head row + legend button ---------- */
+  .panel-head-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  #legend-btn {
+    flex-shrink: 0;
+    font: inherit;
+    font-size: 12px;
+    color: var(--moss);
+    background: none;
+    border: 1px solid var(--hairline);
+    border-radius: 7px;
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+  #legend-btn:hover { background: var(--moss-tint); }
+  #legend-btn:focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; }
+
+  /* ---------- Address score card ---------- */
+  #score-card { display: none; border-bottom: 1px solid var(--hairline); }
+  #score-card.show { display: block; }
+
+  .score-top {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+  }
+  .score-grade {
+    flex-shrink: 0;
+    width: 62px;
+    height: 62px;
+    border-radius: 13px;
+    display: grid;
+    place-items: center;
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 30px;
+    line-height: 1;
+    color: #fff;
+  }
+  .score-text { flex: 1; min-width: 0; }
+  .score-head {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .score-summary { font-size: 13px; line-height: 1.4; margin-top: 3px; }
+
+  #score-toggle {
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    font-size: 12.5px;
+    color: var(--moss);
+    background: none;
+    border: none;
+    border-top: 1px dashed var(--hairline);
+    padding: 9px 18px;
+    cursor: pointer;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  #score-toggle:hover { background: var(--moss-tint); }
+  #score-toggle .row-chev { color: var(--moss); margin-left: auto; }
+  #score-toggle[aria-expanded="true"] .row-chev { transform: rotate(90deg); }
+  #score-breakdown { padding: 4px 18px 12px; }
+  #score-breakdown[hidden] { display: none; }
+  .bd-row {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    font-size: 12.5px;
+    padding: 3px 0;
+  }
+  .bd-swatch { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; align-self: center; }
+  .bd-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .bd-dist { color: var(--ink-soft); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .bd-note { font-size: 11.5px; color: var(--ink-soft); margin-top: 8px; line-height: 1.5; }
+
+  /* ---------- Layer toggles ---------- */
+  #layers-panel { display: none; border-bottom: 1px solid var(--hairline); }
+  #layers-panel.show { display: block; }
+  #layers-summary {
+    width: 100%;
+    text-align: left;
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink);
+    background: none;
+    border: none;
+    padding: 11px 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #layers-summary:hover { background: var(--moss-tint); }
+  #layers-summary .row-chev { margin-left: auto; color: var(--ink-soft); }
+  #layers-summary[aria-expanded="true"] .row-chev { transform: rotate(90deg); }
+  #layers-list { padding: 2px 0 8px; }
+  #layers-list[hidden] { display: none; }
+
+  .layer-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 18px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .layer-toggle:hover { background: var(--moss-tint); }
+  .layer-toggle input { width: 15px; height: 15px; accent-color: var(--moss); cursor: pointer; flex-shrink: 0; }
+  .layer-swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .layer-name { flex: 1; min-width: 0; }
+  .layer-count { font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .layer-toggle.empty .layer-name,
+  .layer-toggle.empty .layer-count { color: var(--ink-soft); opacity: 0.7; }
+
+  /* ---------- Grouped results ---------- */
+  .group-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 18px 7px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .group-swatch { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+  .group-title {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+  .group-count { margin-left: auto; font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .group-msg { padding: 9px 18px; font-size: 12.5px; color: var(--ink-soft); border-bottom: 1px solid var(--hairline); }
+  .group-msg.err { color: var(--signal); }
+  .group-more {
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    font-size: 12.5px;
+    color: var(--moss);
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--hairline);
+    padding: 9px 18px 9px 55px;
+    cursor: pointer;
+  }
+  .group-more:hover { background: var(--moss-tint); }
+
+  /* ---------- Map markers (generic concern dot) ---------- */
+  .concern-dot {
+    width: 14px; height: 14px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(31,42,36,0.45);
+  }
+
+  /* ---------- Legend modal ---------- */
+  #legend-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(31, 42, 36, 0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  #legend-overlay.show { display: flex; }
+  #legend-modal {
+    background: var(--paper);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 540px;
+    max-height: 86vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 40px rgba(31, 42, 36, 0.35);
+  }
+  #legend-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 18px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  #legend-modal-title {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+  #legend-close {
+    width: 30px; height: 30px;
+    display: grid; place-items: center;
+    border: none; border-radius: 50%;
+    background: var(--hairline); color: var(--ink-soft);
+    font-size: 18px; line-height: 1; cursor: pointer;
+  }
+  #legend-close:hover { background: #C9C7BD; color: var(--ink); }
+  #legend-body { overflow-y: auto; padding: 6px 0 4px; }
+  .legend-row { display: flex; gap: 11px; padding: 9px 18px; align-items: flex-start; }
+  .legend-swatch { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; margin-top: 2px; }
+  .legend-info { font-size: 12.5px; line-height: 1.45; min-width: 0; }
+  .legend-name { font-weight: 600; }
+  .legend-meta { color: var(--ink-soft); }
+  .legend-disclaimer { color: var(--signal); margin-top: 2px; }
+  #legend-foot {
+    padding: 12px 18px;
+    border-top: 1px solid var(--hairline);
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+  #legend-close:focus-visible,
+  .group-more:focus-visible,
+  #score-toggle:focus-visible,
+  #layers-summary:focus-visible,
+  .layer-toggle input:focus-visible { outline: 2px solid var(--moss); outline-offset: 2px; }
+
   /* ---------- Mobile: panel stacks below map ---------- */
   @media (max-width: 720px) {
     #app { flex-direction: column; }
@@ -505,18 +741,31 @@
 
   <aside id="panel" aria-label="Nearby concerns">
     <div id="panel-head">
-      <div id="panel-title">Within 1 mile</div>
-      <div id="panel-sub">EPA Toxics Release Inventory facilities near the searched address. Informational only — distance and direction, you weigh it.</div>
+      <div class="panel-head-row">
+        <div id="panel-title">Nearby concerns</div>
+        <button id="legend-btn" type="button" aria-haspopup="dialog">ⓘ Legend</button>
+      </div>
+      <div id="panel-sub">Environmental &amp; infrastructure concerns near the searched address, with distance and direction. Informational only — you weigh it.</div>
     </div>
 
+    <div id="score-card" aria-live="polite"></div>
+
     <div id="status" role="status"></div>
+
+    <div id="layers-panel">
+      <button id="layers-summary" type="button" aria-expanded="false" aria-controls="layers-list">
+        Layers <span id="layers-summary-count"></span>
+        <span class="row-chev" aria-hidden="true">›</span>
+      </button>
+      <div id="layers-list" hidden></div>
+    </div>
 
     <div id="results">
       <div class="note">Search an address to begin. Try one you know — a current home, a listing you're considering, a friend's place.</div>
     </div>
 
     <div id="panel-foot">
-      Data: EPA Envirofacts (TRI) · Geocoding &amp; tiles © <a href="https://www.openstreetmap.org/copyright" style="color:inherit">OpenStreetMap</a> contributors
+      Data: EPA Envirofacts · OpenStreetMap · Geocoding &amp; tiles © <a href="https://www.openstreetmap.org/copyright" style="color:inherit">OpenStreetMap</a> contributors
     </div>
   </aside>
 </div>
@@ -528,6 +777,21 @@
   </div>
   <div id="history-list"></div>
 </section>
+
+<div id="legend-overlay" role="dialog" aria-modal="true" aria-labelledby="legend-modal-title">
+  <div id="legend-modal">
+    <div id="legend-modal-head">
+      <div id="legend-modal-title">Legend &amp; data sources</div>
+      <button id="legend-close" type="button" aria-label="Close legend">&times;</button>
+    </div>
+    <div id="legend-body"></div>
+    <div id="legend-foot">
+      Each layer scans the address out to its listed radius. Coverage and accuracy vary by source —
+      treat results as a starting point, not a complete picture. Geocoding &amp; map tiles ©
+      <a href="https://www.openstreetmap.org/copyright" style="color:inherit">OpenStreetMap</a> contributors.
+    </div>
+  </div>
+</div>
 
 <script>
 "use strict";
@@ -541,9 +805,43 @@
 ===================================================================== */
 
 const ANN_ARBOR = { lat: 42.2808, lng: -83.7430 };
-const RADIUS_METERS = 1609.34; // 1 mile
-const EPA_TRI_URL = "https://geopub.epa.gov/ArcGIS/rest/services/EMEF/efpoints/MapServer/1/query";
-const PROXY_PATH = "/api/tri"; // Netlify Function fallback (CORS safety net)
+const MI = 1609.34;                 // metres per mile
+const RADIUS_METERS = MI;           // 1-mile reference ring around the address
+const EPA_BASE = "https://geopub.epa.gov/ArcGIS/rest/services/EMEF/efpoints/MapServer";
+const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+
+/* ---------- Concern layers (config-driven; everything iterates this) ----------
+   kind: 'epa' uses EPA_BASE/<epaLayerId>; 'osm' comes from one Overpass query.
+   geom: how the source is drawn/measured. radiusM: scan + score-decay distance.
+   severity: weight in the address score. drawRing: faint radius ring on the map.
+   labelOnly: shown as points with no ring (risk extent varies — user judges).     */
+const LAYERS = [
+  { key:"superfund",   label:"Superfund sites",     color:"#B00020", kind:"epa", epaLayerId:0, geom:"point",   radiusM:3*MI,   severity:10, drawRing:false, labelOnly:true,  source:"EPA CERCLIS (Superfund)", disclaimer:"Shown as labels only — the risk extent depends on the specific contaminants and how far they've spread." },
+  { key:"hazwaste",    label:"Hazardous waste",     color:"#6A1B9A", kind:"epa", epaLayerId:4, geom:"point",   radiusM:1*MI,   severity:7,  drawRing:true,  source:"EPA RCRA hazardous-waste handlers" },
+  { key:"tri",         label:"Toxic releases (TRI)",color:"#B4541E", kind:"epa", epaLayerId:1, geom:"point",   radiusM:1*MI,   severity:6,  drawRing:true,  source:"EPA Toxics Release Inventory (TRI)" },
+  { key:"air",         label:"Air pollution",       color:"#00838F", kind:"epa", epaLayerId:3, geom:"point",   radiusM:1*MI,   severity:6,  drawRing:true,  source:"EPA air-emissions facilities" },
+  { key:"water",       label:"Water dischargers",   color:"#1565C0", kind:"epa", epaLayerId:2, geom:"point",   radiusM:1*MI,   severity:5,  drawRing:true,  source:"EPA NPDES water dischargers" },
+  { key:"brownfields", label:"Brownfields",         color:"#6D4C41", kind:"epa", epaLayerId:5, geom:"point",   radiusM:3*MI,   severity:4,  drawRing:false, labelOnly:true,  source:"EPA ACRES / brownfields", disclaimer:"Brownfield coverage is patchy and varies by county and state." },
+  { key:"powerlines",  label:"Power lines",         color:"#F9A825", kind:"osm", geom:"line",    radiusM:0.5*MI, severity:5,  drawRing:true,  source:"OpenStreetMap (power lines)", disclaimer:"OSM power-line coverage is incomplete; some lines may be unmapped." },
+  { key:"celltowers",  label:"Cell / comm towers",  color:"#C2185B", kind:"osm", geom:"point",   radiusM:0.5*MI, severity:4,  drawRing:true,  source:"OpenStreetMap (masts & towers)", disclaimer:"OSM tower coverage is partial vs. the FCC registry — treat as incomplete." },
+  { key:"highways",    label:"Highways / freeways", color:"#37474F", kind:"osm", geom:"line",    radiusM:1*MI,   severity:4,  drawRing:true,  source:"OpenStreetMap (motorway & trunk roads)" },
+  { key:"airports",    label:"Airports",            color:"#283593", kind:"osm", geom:"polygon", radiusM:5*MI,   severity:5,  drawRing:false, source:"OpenStreetMap (aerodromes)" },
+  { key:"golf",        label:"Golf courses",        color:"#2E7D32", kind:"osm", geom:"polygon", radiusM:3*MI,   severity:2,  drawRing:false, source:"OpenStreetMap (golf-course boundaries)" },
+  { key:"farms",       label:"Farms / cropland",    color:"#9E9D24", kind:"osm", geom:"polygon", radiusM:3*MI,   severity:2,  drawRing:false, source:"OpenStreetMap (farmland)", disclaimer:"Crop-type detail (USDA CropScape) is not included in this version." },
+];
+const LAYER_BY_KEY = Object.fromEntries(LAYERS.map(l => [l.key, l]));
+
+/* Address score: total weighted points -> letter grade (green to red).
+   Scale runs ~0-90 (sum of each layer's capped contribution). */
+const GRADES = [
+  { letter:"A+", max:4,        color:"#2E7D32" },
+  { letter:"A",  max:10,       color:"#558B2F" },
+  { letter:"B",  max:20,       color:"#9E9D24" },
+  { letter:"C",  max:34,       color:"#F9A825" },
+  { letter:"D",  max:52,       color:"#EF6C00" },
+  { letter:"E",  max:Infinity, color:"#C62828" },
+];
+function gradeFor(points) { return GRADES.find(g => points <= g.max); }
 
 /* ---------- Map setup ---------- */
 const map = L.map("map", { zoomControl: true }).setView([ANN_ARBOR.lat, ANN_ARBOR.lng], 12);
@@ -555,8 +853,10 @@ L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
 
 /* Layer groups so each new search wipes the old state cleanly */
 const homeLayer = L.layerGroup().addTo(map);
-const circleLayer = L.layerGroup().addTo(map);
-const facilityLayer = L.layerGroup().addTo(map);
+let concernGroups = {};                 // layerKey -> L.layerGroup (markers + geometry + ring)
+const layerVisible = {};                // layerKey -> bool (toggle state, persists across searches)
+LAYERS.forEach(l => { layerVisible[l.key] = true; });
+let lastByLayer = null, lastOrigin = null; // last results, for re-render on toggle
 
 /* ---------- DOM refs ---------- */
 const form = document.getElementById("search-form");
@@ -570,6 +870,15 @@ const navSearchBtn = document.getElementById("nav-search");
 const navHistoryBtn = document.getElementById("nav-history");
 const historyListEl = document.getElementById("history-list");
 const historyClearBtn = document.getElementById("history-clear");
+const scoreCard = document.getElementById("score-card");
+const layersPanel = document.getElementById("layers-panel");
+const layersSummary = document.getElementById("layers-summary");
+const layersSummaryCount = document.getElementById("layers-summary-count");
+const layersList = document.getElementById("layers-list");
+const legendBtn = document.getElementById("legend-btn");
+const legendOverlay = document.getElementById("legend-overlay");
+const legendClose = document.getElementById("legend-close");
+const legendBody = document.getElementById("legend-body");
 
 /* ---------- Clear button: show only when there's text; reset + refocus ---------- */
 function toggleClearBtn() {
@@ -775,167 +1084,509 @@ async function geocode(query) {
   };
 }
 
-/* ---------- EPA TRI query: direct first, Netlify proxy as fallback ---------- */
-function triParams(lng, lat) {
-  return new URLSearchParams({
+/* ===================================================================
+   Data fetching — each call tries direct first, then the Netlify proxy
+=================================================================== */
+async function fetchEpaLayer(layerId, lng, lat, radiusM) {
+  const params = new URLSearchParams({
     f: "geojson",
     geometry: lng + "," + lat, // longitude first
     geometryType: "esriGeometryPoint",
     inSR: "4326",
     outSR: "4326",
     spatialRel: "esriSpatialRelIntersects",
-    distance: String(RADIUS_METERS),
+    distance: String(Math.round(radiusM)),
     units: "esriSRUnit_Meter",
     outFields: "*",
     returnGeometry: "true"
   });
-}
-
-async function fetchTri(lng, lat) {
-  const params = triParams(lng, lat);
-
-  // 1) Direct browser request to EPA
   try {
-    const res = await fetch(EPA_TRI_URL + "?" + params.toString());
-    if (!res.ok) throw new Error("EPA returned " + res.status);
+    const res = await fetch(EPA_BASE + "/" + layerId + "/query?" + params.toString());
+    if (!res.ok) throw new Error("EPA " + res.status);
     const data = await res.json();
-    if (data.error) throw new Error("EPA error: " + (data.error.message || "unknown"));
+    if (data.error) throw new Error("EPA error");
     return data;
   } catch (directErr) {
-    // 2) Fallback: same query via the Netlify Function (handles CORS).
-    //    Only meaningful when the site is served by Netlify, not file://
     if (location.protocol === "http:" || location.protocol === "https:") {
-      const res = await fetch(PROXY_PATH + "?lng=" + encodeURIComponent(lng) + "&lat=" + encodeURIComponent(lat));
-      if (!res.ok) throw new Error("Proxy returned " + res.status);
+      const res = await fetch("/api/epa?layer=" + layerId +
+        "&lng=" + encodeURIComponent(lng) + "&lat=" + encodeURIComponent(lat) +
+        "&radius=" + encodeURIComponent(Math.round(radiusM)));
+      if (!res.ok) throw new Error("Proxy " + res.status);
       const data = await res.json();
-      if (data.error) throw new Error("EPA error via proxy");
+      if (data.error) throw new Error("EPA proxy error");
       return data;
     }
     throw directErr;
   }
 }
 
-/* ---------- Render results ---------- */
-function renderResults(features, origin) {
-  // origin: {lat, lng}; feature geometry.coordinates is [lng, lat]
-  const from = turf.point([origin.lng, origin.lat]);
+/* Mirror of overpassQuery() in the Netlify function — keep them in sync */
+function buildOverpassQuery(lat, lng) {
+  const a = (m) => "(around:" + m + "," + lat + "," + lng + ")";
+  return "[out:json][timeout:25];(" +
+    'way["power"="line"]' + a(805) + ";" +
+    'node["man_made"="mast"]' + a(805) + ";" +
+    'node["man_made"="communications_tower"]' + a(805) + ";" +
+    'way["man_made"="communications_tower"]' + a(805) + ";" +
+    'node["tower:type"="communication"]' + a(805) + ";" +
+    'way["aeroway"="aerodrome"]' + a(8047) + ";" +
+    'node["aeroway"="aerodrome"]' + a(8047) + ";" +
+    'way["highway"="motorway"]' + a(1609) + ";" +
+    'way["highway"="trunk"]' + a(1609) + ";" +
+    'way["leisure"="golf_course"]' + a(4828) + ";" +
+    'way["landuse"="farmland"]' + a(4828) + ";" +
+    ");out geom 200;";
+}
 
-  const rows = features
-    .filter(f => f && f.geometry && Array.isArray(f.geometry.coordinates))
-    .map(f => {
-      const [flng, flat] = f.geometry.coordinates;
-      const to = turf.point([flng, flat]);
-      const p = f.properties || {};
-      return {
-        name: p.primary_name || "Unnamed facility",
-        address: p.location_address || "",
-        city: p.city_name || "",
-        state: p.state_code || "",
-        zip: p.postal_code || "",
-        county: p.county_name || "",
-        registryId: p.registry_id || "",
-        url: p.facility_url || "",
-        lat: flat,
-        lng: flng,
-        miles: turf.distance(from, to, { units: "miles" }),
-        bearing: turf.bearing(from, to)
-      };
-    })
-    .sort((a, b) => a.miles - b.miles);
-
-  facilityLayer.clearLayers();
-  resultsEl.innerHTML = "";
-
-  if (rows.length === 0) {
-    setNote("No TRI facilities within 1 mile of this address.");
-    return;
-  }
-
-  const markers = [];
-
-  rows.forEach((r, i) => {
-    const cityLine = [r.city, [r.state, r.zip].filter(Boolean).join(" ")]
-      .filter(Boolean).join(", ");
-
-    // Map marker — Leaflet order: [lat, lng]
-    const marker = L.marker([r.lat, r.lng], {
-      icon: L.divIcon({ className: "", html: '<div class="tri-dot"></div>', iconSize: [14, 14], iconAnchor: [7, 7] }),
-      title: r.name
-    }).bindPopup(
-      "<strong>" + escapeHtml(r.name) + "</strong><br>" +
-      (r.address ? escapeHtml(r.address) + "<br>" : "") +
-      r.miles.toFixed(1) + " mi " + compassPoint(r.bearing) + " of searched address"
-    );
-    marker.addTo(facilityLayer);
-    markers.push(marker);
-
-    // ----- Sidebar item: clickable summary row + collapsible details -----
-    const item = document.createElement("div");
-    item.className = "row-item";
-
-    const row = document.createElement("button");
-    row.type = "button";
-    row.className = "row";
-    row.setAttribute("aria-expanded", "false");
-    row.appendChild(bearingArrow(r.bearing));
-
-    const body = document.createElement("div");
-    body.className = "row-body";
-
-    const name = document.createElement("div");
-    name.className = "row-name";
-    name.textContent = r.name;
-
-    const meta = document.createElement("div");
-    meta.className = "row-meta";
-    meta.innerHTML = r.miles.toFixed(1) + " mi <span class='dir'>" + compassPoint(r.bearing) + "</span>";
-
-    body.appendChild(name);
-    body.appendChild(meta);
-    row.appendChild(body);
-
-    const chev = document.createElement("span");
-    chev.className = "row-chev";
-    chev.setAttribute("aria-hidden", "true");
-    chev.textContent = "›"; // ›
-    row.appendChild(chev);
-
-    // Detail panel — revealed on click
-    const details = document.createElement("div");
-    details.className = "row-details";
-    details.hidden = true;
-
-    const dl = document.createElement("dl");
-    dl.className = "detail-list";
-    addDetail(dl, "Address", r.address);
-    addDetail(dl, "City", cityLine);
-    addDetail(dl, "County", titleCaseCounty(r.county));
-    addDetail(dl, "Registry ID", r.registryId);
-    details.appendChild(dl);
-
-    if (r.url) {
-      const link = document.createElement("a");
-      link.className = "detail-link";
-      link.href = r.url;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.textContent = "View full EPA report ↗";
-      details.appendChild(link);
-    }
-
-    row.addEventListener("click", () => {
-      const open = row.getAttribute("aria-expanded") === "true";
-      row.setAttribute("aria-expanded", String(!open));
-      details.hidden = open;
-      map.panTo([r.lat, r.lng]); // [lat, lng]
-      markers[i].openPopup();
+async function fetchOsm(lat, lng) {
+  const body = "data=" + encodeURIComponent(buildOverpassQuery(lat, lng));
+  try {
+    const res = await fetch(OVERPASS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body
     });
+    if (!res.ok) throw new Error("Overpass " + res.status);
+    return await res.json();
+  } catch (directErr) {
+    if (location.protocol === "http:" || location.protocol === "https:") {
+      const res = await fetch("/api/osm?lat=" + encodeURIComponent(lat) + "&lng=" + encodeURIComponent(lng));
+      if (!res.ok) throw new Error("OSM proxy " + res.status);
+      return await res.json();
+    }
+    throw directErr;
+  }
+}
 
-    item.appendChild(row);
-    item.appendChild(details);
-    resultsEl.appendChild(item);
+/* ===================================================================
+   Parsing -> uniform "concern" objects {layerKey,name,lat,lng,miles,bearing,...}
+=================================================================== */
+function epaConcern(layer, feature, origin) {
+  if (!feature || !feature.geometry || !Array.isArray(feature.geometry.coordinates)) return null;
+  const [flng, flat] = feature.geometry.coordinates;
+  const p = feature.properties || {};
+  const from = turf.point([origin.lng, origin.lat]);
+  const to = turf.point([flng, flat]);
+  return {
+    layerKey: layer.key,
+    kind: "epa",
+    name: p.primary_name || layer.label,
+    lat: flat, lng: flng,
+    miles: turf.distance(from, to, { units: "miles" }),
+    bearing: turf.bearing(from, to),
+    epa: {
+      address: p.location_address || "", city: p.city_name || "",
+      state: p.state_code || "", zip: p.postal_code || "",
+      county: p.county_name || "", registryId: p.registry_id || "",
+      url: p.facility_url || ""
+    }
+  };
+}
+
+function classifyOsm(t) {
+  if (!t) return null;
+  if (t.power === "line") return "powerlines";
+  if (t.man_made === "mast" || t.man_made === "communications_tower" || t["tower:type"] === "communication") return "celltowers";
+  if (t.aeroway === "aerodrome") return "airports";
+  if (t.highway === "motorway" || t.highway === "trunk") return "highways";
+  if (t.leisure === "golf_course") return "golf";
+  if (t.landuse === "farmland") return "farms";
+  return null;
+}
+
+function osmTypeLabel(key, t) {
+  switch (key) {
+    case "powerlines": return "Power line" + (t.voltage ? " · " + t.voltage + " V" : "");
+    case "celltowers": return t["tower:type"] === "communication" ? "Communication tower" : (t.man_made === "mast" ? "Mast" : "Tower");
+    case "airports": return t.aerodrome === "international" ? "International airport" : "Airport";
+    case "highways": return (t.highway === "motorway" ? "Motorway" : "Trunk road") + (t.ref ? " " + t.ref : "");
+    case "golf": return "Golf course";
+    case "farms": return "Farmland / cropland";
+    default: return "";
+  }
+}
+
+function osmConcerns(elements, origin) {
+  const from = turf.point([origin.lng, origin.lat]);
+  const out = [];
+  (elements || []).forEach(el => {
+    const t = el.tags || {};
+    const key = classifyOsm(t);
+    if (!key) return;
+    const layer = LAYER_BY_KEY[key];
+    let nearest = null, miles = null, drawGeom = null;
+
+    if (el.type === "node" && typeof el.lat === "number") {
+      nearest = [el.lon, el.lat];
+      miles = turf.distance(from, turf.point(nearest), { units: "miles" });
+    } else if (el.type === "way" && Array.isArray(el.geometry) && el.geometry.length > 1) {
+      const coords = el.geometry.map(g => [g.lon, g.lat]);
+      const first = coords[0], last = coords[coords.length - 1];
+      const closed = coords.length > 3 && first[0] === last[0] && first[1] === last[1];
+      if (layer.geom === "polygon") {
+        const ringCoords = closed ? coords : coords.concat([first]);
+        let inside = false;
+        try { inside = turf.booleanPointInPolygon(from, turf.polygon([ringCoords])); } catch (e) {}
+        if (inside) { miles = 0; nearest = [origin.lng, origin.lat]; }
+        else {
+          const np = turf.nearestPointOnLine(turf.lineString(ringCoords), from, { units: "miles" });
+          nearest = np.geometry.coordinates; miles = np.properties.dist;
+        }
+        drawGeom = { type: "polygon", coords: ringCoords };
+      } else {
+        const np = turf.nearestPointOnLine(turf.lineString(coords), from, { units: "miles" });
+        nearest = np.geometry.coordinates; miles = np.properties.dist;
+        drawGeom = { type: "line", coords: coords };
+      }
+    }
+    if (!nearest || miles == null) return;
+    if (miles > layer.radiusM / MI + 0.01) return; // enforce the layer's radius
+    out.push({
+      layerKey: key,
+      kind: "osm",
+      name: t.name || t.ref || layer.label,
+      lat: nearest[1], lng: nearest[0],
+      miles: miles,
+      bearing: turf.bearing(from, turf.point(nearest)),
+      osm: { type: osmTypeLabel(key, t) },
+      drawGeom: drawGeom
+    });
+  });
+  return out;
+}
+
+/* ===================================================================
+   Scoring
+=================================================================== */
+function computeScore(byLayer) {
+  // Each layer contributes a capped amount: its closest source sets the base
+  // (severity x proximity), with a bounded density bonus for additional nearby
+  // sources. This stops one dense layer (e.g. RCRA handlers) from dominating.
+  let points = 0;
+  let count = 0;
+  const layerScores = [];
+  LAYERS.forEach(l => {
+    const st = byLayer[l.key];
+    if (!st || st.status !== "ok" || !st.concerns.length) return;
+    count += st.concerns.length;
+    const nearest = st.concerns[0]; // sorted ascending by distance
+    const pfNear = Math.max(0, 1 - (nearest.miles * MI) / l.radiusM);
+    const densityBonus = Math.min(0.5, (st.concerns.length - 1) * 0.1); // +0..50%
+    const pts = l.severity * pfNear * (1 + densityBonus);
+    points += pts;
+    layerScores.push({ layerKey: l.key, pts: pts, count: st.concerns.length, nearest: nearest });
+  });
+  layerScores.sort((a, b) => b.pts - a.pts);
+  return { points: points, grade: gradeFor(points), count: count, layerScores: layerScores };
+}
+
+/* ===================================================================
+   Rendering: score card, map groups, toggles, grouped list
+=================================================================== */
+function renderAll(byLayer, origin) {
+  lastByLayer = byLayer;
+  lastOrigin = origin;
+  renderScoreCard(computeScore(byLayer));
+  buildConcernGroups(byLayer, origin);
+  applyLayerVisibility();
+  renderLayerToggles(byLayer);
+  renderResultsList(byLayer);
+}
+
+function renderScoreCard(score) {
+  scoreCard.innerHTML = "";
+  scoreCard.className = "show";
+
+  const top = document.createElement("div");
+  top.className = "score-top";
+  const grade = document.createElement("div");
+  grade.className = "score-grade";
+  grade.style.background = score.grade.color;
+  grade.textContent = score.grade.letter;
+  const text = document.createElement("div");
+  text.className = "score-text";
+  const head = document.createElement("div");
+  head.className = "score-head";
+  head.textContent = "Address score";
+  const summary = document.createElement("div");
+  summary.className = "score-summary";
+  summary.textContent = score.count === 0
+    ? "No concerns detected within range."
+    : score.count + (score.count === 1 ? " concern" : " concerns") + " detected nearby.";
+  text.appendChild(head);
+  text.appendChild(summary);
+  top.appendChild(grade);
+  top.appendChild(text);
+  scoreCard.appendChild(top);
+
+  if (score.count > 0) {
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.id = "score-toggle";
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.innerHTML = "What's driving this score <span class=\"row-chev\" aria-hidden=\"true\">›</span>";
+    const bd = document.createElement("div");
+    bd.id = "score-breakdown";
+    bd.hidden = true;
+    score.layerScores.slice(0, 5).forEach(ls => {
+      const l = LAYER_BY_KEY[ls.layerKey];
+      const row = document.createElement("div");
+      row.className = "bd-row";
+      const sw = document.createElement("span"); sw.className = "bd-swatch"; sw.style.background = l.color;
+      const nm = document.createElement("span"); nm.className = "bd-name";
+      nm.textContent = l.label + (ls.count > 1 ? " (" + ls.count + ")" : "");
+      const ds = document.createElement("span"); ds.className = "bd-dist";
+      ds.textContent = "nearest " + ls.nearest.miles.toFixed(1) + " mi";
+      row.appendChild(sw); row.appendChild(nm); row.appendChild(ds);
+      bd.appendChild(row);
+    });
+    const note = document.createElement("div");
+    note.className = "bd-note";
+    note.textContent = "Each nearby source adds to the score by type (more hazardous = more weight) and how close it is.";
+    bd.appendChild(note);
+    toggle.addEventListener("click", () => {
+      const open = toggle.getAttribute("aria-expanded") === "true";
+      toggle.setAttribute("aria-expanded", String(!open));
+      bd.hidden = open;
+    });
+    scoreCard.appendChild(toggle);
+    scoreCard.appendChild(bd);
+  }
+}
+
+function clearConcernGroups() {
+  Object.values(concernGroups).forEach(g => map.removeLayer(g));
+  concernGroups = {};
+}
+
+function buildConcernGroups(byLayer, origin) {
+  clearConcernGroups();
+  LAYERS.forEach(l => {
+    const st = byLayer[l.key];
+    if (!st || st.status !== "ok" || !st.concerns.length) return;
+    const grp = L.layerGroup();
+    if (l.drawRing) {
+      L.circle([origin.lat, origin.lng], {
+        radius: l.radiusM, color: l.color, weight: 1, fill: false, opacity: 0.5, dashArray: "4 4"
+      }).addTo(grp);
+    }
+    st.concerns.forEach(c => {
+      if (c.drawGeom && c.drawGeom.type === "line") {
+        L.polyline(c.drawGeom.coords.map(p => [p[1], p[0]]), { color: l.color, weight: 3, opacity: 0.7 }).addTo(grp);
+      } else if (c.drawGeom && c.drawGeom.type === "polygon") {
+        L.polygon(c.drawGeom.coords.map(p => [p[1], p[0]]), { color: l.color, weight: 1.5, opacity: 0.6, fillColor: l.color, fillOpacity: 0.12 }).addTo(grp);
+      }
+      const marker = L.marker([c.lat, c.lng], {
+        icon: L.divIcon({ className: "", html: '<div class="concern-dot" style="background:' + l.color + '"></div>', iconSize: [14, 14], iconAnchor: [7, 7] }),
+        title: c.name
+      }).bindPopup(
+        "<strong>" + escapeHtml(c.name) + "</strong><br>" + escapeHtml(l.label) + "<br>" +
+        c.miles.toFixed(1) + " mi " + compassPoint(c.bearing) + " of address"
+      );
+      marker.addTo(grp);
+      c._marker = marker;
+    });
+    concernGroups[l.key] = grp;
   });
 }
+
+function applyLayerVisibility() {
+  LAYERS.forEach(l => {
+    const g = concernGroups[l.key];
+    if (!g) return;
+    if (layerVisible[l.key]) g.addTo(map); else map.removeLayer(g);
+  });
+}
+
+function setLayerVisible(key, vis) {
+  layerVisible[key] = vis;
+  const g = concernGroups[key];
+  if (g) { if (vis) g.addTo(map); else map.removeLayer(g); }
+  if (lastByLayer) renderResultsList(lastByLayer);
+}
+
+function renderLayerToggles(byLayer) {
+  layersList.innerHTML = "";
+  let total = 0;
+  LAYERS.forEach(l => {
+    const st = byLayer[l.key];
+    const count = st && st.status === "ok" ? st.concerns.length : null;
+    if (count) total += count;
+    const row = document.createElement("label");
+    row.className = "layer-toggle" + (count ? "" : " empty");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = !!layerVisible[l.key];
+    cb.addEventListener("change", () => setLayerVisible(l.key, cb.checked));
+    const sw = document.createElement("span"); sw.className = "layer-swatch"; sw.style.background = l.color;
+    const nm = document.createElement("span"); nm.className = "layer-name"; nm.textContent = l.label;
+    const ct = document.createElement("span"); ct.className = "layer-count";
+    ct.textContent = (st && st.status === "error") ? "—" : String(count || 0);
+    row.appendChild(cb); row.appendChild(sw); row.appendChild(nm); row.appendChild(ct);
+    layersList.appendChild(row);
+  });
+  layersSummaryCount.textContent = "(" + total + ")";
+  layersPanel.className = "show";
+}
+
+function groupHead(l, count) {
+  const h = document.createElement("div");
+  h.className = "group-head";
+  const sw = document.createElement("span"); sw.className = "group-swatch"; sw.style.background = l.color;
+  const t = document.createElement("span"); t.className = "group-title"; t.textContent = l.label;
+  h.appendChild(sw); h.appendChild(t);
+  if (count != null) {
+    const c = document.createElement("span"); c.className = "group-count"; c.textContent = String(count);
+    h.appendChild(c);
+  }
+  return h;
+}
+
+function buildConcernRow(c, l) {
+  const item = document.createElement("div");
+  item.className = "row-item";
+  const row = document.createElement("button");
+  row.type = "button";
+  row.className = "row";
+  row.setAttribute("aria-expanded", "false");
+  row.appendChild(bearingArrow(c.bearing));
+
+  const body = document.createElement("div");
+  body.className = "row-body";
+  const name = document.createElement("div");
+  name.className = "row-name";
+  name.textContent = c.name;
+  const meta = document.createElement("div");
+  meta.className = "row-meta";
+  meta.innerHTML = c.miles.toFixed(1) + " mi <span class='dir'>" + compassPoint(c.bearing) + "</span>";
+  body.appendChild(name);
+  body.appendChild(meta);
+  row.appendChild(body);
+
+  const chev = document.createElement("span");
+  chev.className = "row-chev";
+  chev.setAttribute("aria-hidden", "true");
+  chev.textContent = "›";
+  row.appendChild(chev);
+
+  const details = document.createElement("div");
+  details.className = "row-details";
+  details.hidden = true;
+  const dl = document.createElement("dl");
+  dl.className = "detail-list";
+  if (c.kind === "epa") {
+    const cityLine = [c.epa.city, [c.epa.state, c.epa.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+    addDetail(dl, "Type", l.label);
+    addDetail(dl, "Address", c.epa.address);
+    addDetail(dl, "City", cityLine);
+    addDetail(dl, "County", titleCaseCounty(c.epa.county));
+    addDetail(dl, "Registry ID", c.epa.registryId);
+  } else {
+    addDetail(dl, "Type", c.osm.type || l.label);
+    addDetail(dl, "Distance", c.miles.toFixed(2) + " mi " + compassPoint(c.bearing));
+    addDetail(dl, "Source", l.source);
+  }
+  details.appendChild(dl);
+  if (c.kind === "epa" && c.epa.url) {
+    const link = document.createElement("a");
+    link.className = "detail-link";
+    link.href = c.epa.url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = "View full EPA report ↗";
+    details.appendChild(link);
+  }
+
+  row.addEventListener("click", () => {
+    const open = row.getAttribute("aria-expanded") === "true";
+    row.setAttribute("aria-expanded", String(!open));
+    details.hidden = open;
+    map.panTo([c.lat, c.lng]);
+    if (c._marker) c._marker.openPopup();
+  });
+
+  item.appendChild(row);
+  item.appendChild(details);
+  return item;
+}
+
+function renderResultsList(byLayer) {
+  resultsEl.innerHTML = "";
+  let anyShown = false;
+  LAYERS.forEach(l => {
+    if (!layerVisible[l.key]) return;
+    const st = byLayer[l.key];
+    if (!st) return;
+    if (st.status === "error") {
+      anyShown = true;
+      resultsEl.appendChild(groupHead(l, null));
+      const m = document.createElement("div");
+      m.className = "group-msg err";
+      m.textContent = "Couldn't load this layer — try again in a moment.";
+      resultsEl.appendChild(m);
+      return;
+    }
+    if (!st.concerns.length) return;
+    anyShown = true;
+    resultsEl.appendChild(groupHead(l, st.concerns.length));
+    const shown = st.concerns.slice(0, 10);
+    shown.forEach(c => resultsEl.appendChild(buildConcernRow(c, l)));
+    if (st.concerns.length > shown.length) {
+      const more = document.createElement("button");
+      more.type = "button";
+      more.className = "group-more";
+      more.textContent = "Show " + (st.concerns.length - shown.length) + " more";
+      more.addEventListener("click", () => {
+        st.concerns.slice(10).forEach(c => more.parentNode.insertBefore(buildConcernRow(c, l), more));
+        more.remove();
+      });
+      resultsEl.appendChild(more);
+    }
+  });
+  if (!anyShown) {
+    const n = document.createElement("div");
+    n.className = "note";
+    n.textContent = "No concerns detected within range for the active layers.";
+    resultsEl.appendChild(n);
+  }
+}
+
+/* ===================================================================
+   Legend modal
+=================================================================== */
+function miStr(m) { const v = m / MI; return (Number.isInteger(v) ? v : v.toFixed(1)) + " mi"; }
+function renderLegend() {
+  legendBody.innerHTML = "";
+  LAYERS.forEach(l => {
+    const row = document.createElement("div");
+    row.className = "legend-row";
+    const sw = document.createElement("span"); sw.className = "legend-swatch"; sw.style.background = l.color;
+    const info = document.createElement("div"); info.className = "legend-info";
+    const nm = document.createElement("div"); nm.className = "legend-name"; nm.textContent = l.label;
+    const meta = document.createElement("div"); meta.className = "legend-meta";
+    meta.textContent = "Within " + miStr(l.radiusM) + (l.labelOnly ? " (labels only)" : "") + " · " + l.source;
+    info.appendChild(nm); info.appendChild(meta);
+    if (l.disclaimer) {
+      const d = document.createElement("div"); d.className = "legend-disclaimer"; d.textContent = l.disclaimer;
+      info.appendChild(d);
+    }
+    row.appendChild(sw); row.appendChild(info);
+    legendBody.appendChild(row);
+  });
+}
+function openLegend() { legendOverlay.classList.add("show"); }
+function closeLegend() { legendOverlay.classList.remove("show"); }
+
+renderLegend();
+legendBtn.addEventListener("click", openLegend);
+legendClose.addEventListener("click", closeLegend);
+legendOverlay.addEventListener("click", (e) => { if (e.target === legendOverlay) closeLegend(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeLegend(); });
+layersSummary.addEventListener("click", () => {
+  const open = layersSummary.getAttribute("aria-expanded") === "true";
+  layersSummary.setAttribute("aria-expanded", String(!open));
+  layersList.hidden = open;
+});
 
 /* Build one "label / value" pair in a detail list; skips empty values */
 function addDetail(dl, label, value) {
@@ -964,50 +1615,73 @@ function escapeHtml(s) {
 
 /* ---------- The core loop ---------- */
 
-/* Center + pin + 1 mi circle, query EPA, render. Reused by new searches
-   and by revisiting history (which already knows the coordinates). */
+/* Center + pin + reference ring, scan every layer in parallel, then render.
+   Reused by new searches and by revisiting history (coords already known). */
 async function runSearch(place) {
   searchBtn.disabled = true;
   setNote("");
   resultsEl.innerHTML = "";
+  scoreCard.className = "";
+  layersPanel.className = "";
 
-  try {
-    /* Center, pin, circle */
-    homeLayer.clearLayers();
-    circleLayer.clearLayers();
-    facilityLayer.clearLayers();
+  /* Address pin + 1-mile reference ring */
+  homeLayer.clearLayers();
+  clearConcernGroups();
+  L.marker([place.lat, place.lng], {
+    icon: L.divIcon({ className: "", html: '<div class="home-pin"></div>', iconSize: [16, 16], iconAnchor: [8, 8] }),
+    title: "Searched address"
+  }).bindPopup("<strong>Searched address</strong><br>" + escapeHtml(place.label)).addTo(homeLayer);
+  const ref = L.circle([place.lat, place.lng], {
+    radius: RADIUS_METERS, color: "#3E6B4F", weight: 1.5, fillColor: "#3E6B4F", fillOpacity: 0.06
+  });
+  ref.addTo(homeLayer);
+  map.fitBounds(ref.getBounds(), { padding: [24, 24] });
 
-    L.marker([place.lat, place.lng], { // [lat, lng]
-      icon: L.divIcon({ className: "", html: '<div class="home-pin"></div>', iconSize: [16, 16], iconAnchor: [8, 8] }),
-      title: "Searched address"
-    }).bindPopup("<strong>Searched address</strong><br>" + escapeHtml(place.label))
-      .addTo(homeLayer);
+  setStatus("Scanning nearby concerns\u2026", { busy: true });
 
-    L.circle([place.lat, place.lng], { // [lat, lng]
-      radius: RADIUS_METERS,
-      color: "#3E6B4F",
-      weight: 1.5,
-      fillColor: "#3E6B4F",
-      fillOpacity: 0.10
-    }).addTo(circleLayer);
+  /* Fire all layer requests in parallel; isolate per-source failures */
+  const epaLayers = LAYERS.filter(l => l.kind === "epa");
+  const epaTasks = epaLayers.map(l => fetchEpaLayer(l.epaLayerId, place.lng, place.lat, l.radiusM));
+  const [epaResults, osmResult] = await Promise.all([
+    Promise.allSettled(epaTasks),
+    fetchOsm(place.lat, place.lng).then(
+      v => ({ status: "fulfilled", value: v }),
+      e => ({ status: "rejected", reason: e })
+    )
+  ]);
 
-    map.fitBounds(circleLayer.getLayers()[0].getBounds(), { padding: [24, 24] });
+  clearStatus();
 
-    /* Query EPA TRI */
-    setStatus("Checking EPA records\u2026", { busy: true });
-    const geojson = await fetchTri(place.lng, place.lat);
-    clearStatus();
+  /* Assemble results keyed by layer */
+  const byLayer = {};
+  LAYERS.forEach(l => { byLayer[l.key] = { status: "ok", concerns: [] }; });
 
-    /* List nearest-first */
-    renderResults(geojson.features || [], place);
+  epaResults.forEach((res, i) => {
+    const l = epaLayers[i];
+    if (res.status === "fulfilled") {
+      const feats = (res.value && res.value.features) || [];
+      byLayer[l.key].concerns = feats.map(f => epaConcern(l, f, place)).filter(Boolean).sort((a, b) => a.miles - b.miles);
+    } else {
+      console.error("EPA layer failed:", l.key, res.reason);
+      byLayer[l.key].status = "error";
+    }
+  });
 
-  } catch (err) {
-    console.error(err);
-    setStatus("Couldn't load facility data \u2014 " + (err && err.message ? err.message : "network error") + ". The map still works; try again in a moment.", { error: true });
-    setNote("Results unavailable for this search.");
-  } finally {
-    searchBtn.disabled = false;
+  if (osmResult.status === "fulfilled") {
+    const grouped = {};
+    osmConcerns(osmResult.value.elements, place).forEach(c => {
+      (grouped[c.layerKey] = grouped[c.layerKey] || []).push(c);
+    });
+    LAYERS.filter(l => l.kind === "osm").forEach(l => {
+      byLayer[l.key].concerns = (grouped[l.key] || []).sort((a, b) => a.miles - b.miles);
+    });
+  } else {
+    console.error("OSM failed:", osmResult.reason);
+    LAYERS.filter(l => l.kind === "osm").forEach(l => { byLayer[l.key].status = "error"; });
   }
+
+  renderAll(byLayer, place);
+  searchBtn.disabled = false;
 }
 
 form.addEventListener("submit", async (e) => {
