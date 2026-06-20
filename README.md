@@ -70,6 +70,8 @@ their risk extent depends on the specific contaminants.
 |-------|--------|--------|
 | Superfund sites | 3 mi (labels only) | EPA CERCLIS |
 | Contamination sites | 1 mi | Michigan EGLE — Part 201 (RIDE), with risk status + contaminants. MI only |
+| Leaking USTs (LUST) | 1 mi | Michigan EGLE — Part 213 leaking tanks (RIDE), with release status. MI only |
+| Storage tanks (UST) | 1 mi | Michigan EGLE — Part 211 registered tanks (RIDE). MI only |
 | Toxic releases (TRI) | 1 mi | EPA Toxics Release Inventory |
 | Air pollution | 1 mi | EPA air-emissions facilities |
 | Water dischargers | 1 mi | EPA NPDES |
@@ -119,9 +121,8 @@ to those two upstreams and builds the Overpass query server-side — it is not a
 ## Next iterations
 
 1. Per-layer custom radius controls (post-MVP in the brief).
-2. Michigan EGLE Part 213 (LUST) and underground storage tanks as extra layers.
-3. USDA CropScape crop-type detail for farmland.
-4. Richer FCC/utility-GIS tower & power-line data (needs keys or bulk loads).
+2. USDA CropScape crop-type detail for farmland.
+3. Richer FCC/utility-GIS tower & power-line data (needs keys or bulk loads).
 
 ## Usage etiquette (free services)
 
