@@ -732,12 +732,25 @@
 
   /* ---------- Grouped results ---------- */
   .group-head {
+    width: 100%;
+    font: inherit;
+    text-align: left;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--hairline);
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 11px 18px 7px;
-    border-bottom: 1px solid var(--hairline);
+    padding: 11px 18px;
+    cursor: pointer;
+    color: var(--ink);
   }
+  .group-head:hover:not(:disabled) { background: var(--moss-tint); }
+  .group-head:disabled { cursor: default; }
+  .group-head:focus-visible { outline: 2px solid var(--moss); outline-offset: -2px; }
+  .group-head .row-chev { color: var(--ink-soft); margin-left: 4px; }
+  .group-head[aria-expanded="true"] .row-chev { transform: rotate(90deg); }
+  .group-rows[hidden] { display: none; }
   .group-swatch { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
   .group-title {
     font-family: var(--display);
@@ -763,6 +776,14 @@
     cursor: pointer;
   }
   .group-more:hover { background: var(--moss-tint); }
+
+  /* Flash a row when reached via a map-dot click */
+  @keyframes rowflash {
+    0% { background: var(--moss-tint); }
+    100% { background: transparent; }
+  }
+  .row-item.flash { animation: rowflash 1.8s ease-out; }
+  @media (prefers-reduced-motion: reduce) { .row-item.flash { animation: none; background: var(--moss-tint); } }
 
   /* ---------- Map markers (generic concern dot) ---------- */
   .concern-dot {
@@ -1466,11 +1487,16 @@ function osmConcerns(elements, origin) {
     out.push({
       layerKey: key,
       kind: "osm",
-      name: t.name || t.ref || layer.label,
+      name: t.name || t.ref || osmTypeLabel(key, t) || layer.label,
       lat: nearest[1], lng: nearest[0],
       miles: miles,
       bearing: turf.bearing(from, turf.point(nearest)),
-      osm: { type: osmTypeLabel(key, t) },
+      osm: {
+        type: osmTypeLabel(key, t),
+        operator: t.operator || "",
+        voltage: t.voltage || "",
+        ref: t.ref || ""
+      },
       drawGeom: drawGeom
     });
   });
@@ -1581,6 +1607,31 @@ function clearConcernGroups() {
   concernGroups = {};
 }
 
+function concernPopupHtml(c, l) {
+  const lines = ["<strong>" + escapeHtml(c.name) + "</strong>", escapeHtml(l.label)];
+  if (c.kind === "epa" && c.epa.address) lines.push(escapeHtml(c.epa.address));
+  if (c.kind === "osm") {
+    const extra = [c.osm.type, c.osm.operator, c.osm.voltage ? c.osm.voltage + " V" : ""]
+      .filter(Boolean).filter(x => x !== l.label).join(" · ");
+    if (extra) lines.push(escapeHtml(extra));
+  }
+  lines.push(c.miles.toFixed(1) + " mi " + compassPoint(c.bearing) + " of address");
+  lines.push('<em style="color:#4A554E">See the list for full details.</em>');
+  return lines.join("<br>");
+}
+
+/* Clicking a map dot: open its category, expand its row, scroll to + flash it */
+function focusConcernRow(c) {
+  if (document.body.classList.contains("view-history")) showView("search");
+  if (!c._rowItem) return;
+  if (c._head && c._head.getAttribute("aria-expanded") === "false") c._head.click();
+  if (c._setExpanded) c._setExpanded(true);
+  c._rowItem.scrollIntoView({ behavior: "smooth", block: "center" });
+  c._rowItem.classList.remove("flash");
+  void c._rowItem.offsetWidth; // restart the flash animation
+  c._rowItem.classList.add("flash");
+}
+
 function buildConcernGroups(byLayer, origin) {
   clearConcernGroups();
   LAYERS.forEach(l => {
@@ -1601,10 +1652,9 @@ function buildConcernGroups(byLayer, origin) {
       const marker = L.marker([c.lat, c.lng], {
         icon: L.divIcon({ className: "", html: '<div class="concern-dot" style="background:' + l.color + '"></div>', iconSize: [14, 14], iconAnchor: [7, 7] }),
         title: c.name
-      }).bindPopup(
-        "<strong>" + escapeHtml(c.name) + "</strong><br>" + escapeHtml(l.label) + "<br>" +
-        c.miles.toFixed(1) + " mi " + compassPoint(c.bearing) + " of address"
-      );
+      }).bindPopup(concernPopupHtml(c, l));
+      // Clicking a dot opens its popup AND jumps to the matching list row (full detail)
+      marker.on("click", () => focusConcernRow(c));
       marker.addTo(grp);
       c._marker = marker;
     });
@@ -1651,8 +1701,10 @@ function renderLayerToggles(byLayer) {
   layersPanel.className = "show";
 }
 
-function groupHead(l, count) {
-  const h = document.createElement("div");
+/* Collapsible category header. If rowsEl is given, clicking toggles it. */
+function groupHead(l, count, rowsEl) {
+  const h = document.createElement("button");
+  h.type = "button";
   h.className = "group-head";
   const sw = document.createElement("span"); sw.className = "group-swatch"; sw.style.background = l.color;
   const t = document.createElement("span"); t.className = "group-title"; t.textContent = l.label;
@@ -1660,6 +1712,19 @@ function groupHead(l, count) {
   if (count != null) {
     const c = document.createElement("span"); c.className = "group-count"; c.textContent = String(count);
     h.appendChild(c);
+  }
+  if (rowsEl) {
+    h.setAttribute("aria-expanded", "false");
+    const chev = document.createElement("span");
+    chev.className = "row-chev"; chev.setAttribute("aria-hidden", "true"); chev.textContent = "›";
+    h.appendChild(chev);
+    h.addEventListener("click", () => {
+      const open = h.getAttribute("aria-expanded") === "true";
+      h.setAttribute("aria-expanded", String(!open));
+      rowsEl.hidden = open;
+    });
+  } else {
+    h.disabled = true; // error groups have nothing to expand
   }
   return h;
 }
@@ -1705,6 +1770,9 @@ function buildConcernRow(c, l) {
     addDetail(dl, "Registry ID", c.epa.registryId);
   } else {
     addDetail(dl, "Type", c.osm.type || l.label);
+    addDetail(dl, "Operator", c.osm.operator);
+    addDetail(dl, "Voltage", c.osm.voltage ? c.osm.voltage + " V" : "");
+    addDetail(dl, "Ref", c.osm.ref);
     addDetail(dl, "Distance", c.miles.toFixed(2) + " mi " + compassPoint(c.bearing));
     addDetail(dl, "Source", l.source);
   }
@@ -1719,16 +1787,22 @@ function buildConcernRow(c, l) {
     details.appendChild(link);
   }
 
+  // direct expand control (used by map-dot clicks, no panning)
+  c._setExpanded = (open) => {
+    row.setAttribute("aria-expanded", String(open));
+    details.hidden = !open;
+  };
+
   row.addEventListener("click", () => {
     const open = row.getAttribute("aria-expanded") === "true";
-    row.setAttribute("aria-expanded", String(!open));
-    details.hidden = open;
+    c._setExpanded(!open);
     map.panTo([c.lat, c.lng]);
     if (c._marker) c._marker.openPopup();
   });
 
   item.appendChild(row);
   item.appendChild(details);
+  c._rowItem = item;
   return item;
 }
 
@@ -1739,32 +1813,38 @@ function renderResultsList(byLayer) {
     if (!layerVisible[l.key]) return;
     const st = byLayer[l.key];
     if (!st) return;
+
     if (st.status === "error") {
       anyShown = true;
-      resultsEl.appendChild(groupHead(l, null));
+      const grp = document.createElement("div");
+      grp.className = "layer-group";
+      grp.appendChild(groupHead(l, null, null));
       const m = document.createElement("div");
       m.className = "group-msg err";
       m.textContent = "Couldn't load this layer — try again in a moment.";
-      resultsEl.appendChild(m);
+      grp.appendChild(m);
+      resultsEl.appendChild(grp);
       return;
     }
     if (!st.concerns.length) return;
     anyShown = true;
-    resultsEl.appendChild(groupHead(l, st.concerns.length));
-    const shown = st.concerns.slice(0, 10);
-    shown.forEach(c => resultsEl.appendChild(buildConcernRow(c, l)));
-    if (st.concerns.length > shown.length) {
-      const more = document.createElement("button");
-      more.type = "button";
-      more.className = "group-more";
-      more.textContent = "Show " + (st.concerns.length - shown.length) + " more";
-      more.addEventListener("click", () => {
-        st.concerns.slice(10).forEach(c => more.parentNode.insertBefore(buildConcernRow(c, l), more));
-        more.remove();
-      });
-      resultsEl.appendChild(more);
-    }
+
+    const grp = document.createElement("div");
+    grp.className = "layer-group";
+    const rows = document.createElement("div");
+    rows.className = "group-rows";
+    rows.hidden = true; // categories start collapsed
+    const head = groupHead(l, st.concerns.length, rows);
+    grp.appendChild(head);
+    st.concerns.forEach(c => {
+      const item = buildConcernRow(c, l);
+      c._head = head;
+      rows.appendChild(item);
+    });
+    grp.appendChild(rows);
+    resultsEl.appendChild(grp);
   });
+
   if (!anyShown) {
     const n = document.createElement("div");
     n.className = "note";
