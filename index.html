@@ -999,7 +999,7 @@ const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
    labelOnly: shown as points with no ring (risk extent varies — user judges).     */
 const LAYERS = [
   { key:"superfund",   label:"Superfund sites",     color:"#B00020", kind:"epa", epaLayerId:0, geom:"point",   radiusM:3*MI,   severity:10, drawRing:false, labelOnly:true,  source:"EPA CERCLIS (Superfund)", disclaimer:"Shown as labels only — the risk extent depends on the specific contaminants and how far they've spread." },
-  { key:"hazwaste",    label:"Hazardous waste",     color:"#6A1B9A", kind:"epa", epaLayerId:4, geom:"point",   radiusM:1*MI,   severity:7,  drawRing:true,  source:"EPA RCRA hazardous-waste handlers" },
+  { key:"contamination", label:"Contamination sites", color:"#6A1B9A", kind:"egle", url:"https://gisagoegle.state.mi.us/arcgis/rest/services/EGLE/RRDOpenData/MapServer/0/query", geom:"point", radiusM:1*MI, severity:8, drawRing:true, source:"Michigan EGLE — Part 201 contamination sites (RIDE)", disclaimer:"Michigan only. EGLE's inventory excludes sites it doesn't know about and low-impact releases." },
   { key:"tri",         label:"Toxic releases (TRI)",color:"#B4541E", kind:"epa", epaLayerId:1, geom:"point",   radiusM:1*MI,   severity:6,  drawRing:true,  source:"EPA Toxics Release Inventory (TRI)" },
   { key:"air",         label:"Air pollution",       color:"#00838F", kind:"epa", epaLayerId:3, geom:"point",   radiusM:1*MI,   severity:6,  drawRing:true,  source:"EPA air-emissions facilities" },
   { key:"water",       label:"Water dischargers",   color:"#1565C0", kind:"epa", epaLayerId:2, geom:"point",   radiusM:1*MI,   severity:5,  drawRing:true,  source:"EPA NPDES water dischargers" },
@@ -1426,6 +1426,49 @@ function epaConcern(layer, feature, origin) {
   };
 }
 
+/* Michigan EGLE RIDE — Part 201 contamination sites (CORS-friendly, no key).
+   Geometry is MultiPoint, so we position from the Latitude/Longitude fields. */
+async function fetchEgleLayer(layer, lng, lat, radiusM) {
+  const params = new URLSearchParams({
+    f: "json",
+    geometry: lng + "," + lat,
+    geometryType: "esriGeometryPoint",
+    inSR: "4326",
+    spatialRel: "esriSpatialRelIntersects",
+    distance: String(Math.round(radiusM)),
+    units: "esriSRUnit_Meter",
+    outFields: "SiteName,Address,City,ZipCode,County,Latitude,Longitude,RiskCondition,Contaminants,SiteID,BusinessType",
+    returnGeometry: "false",
+    resultRecordCount: "200"
+  });
+  const res = await fetch(layer.url + "?" + params.toString());
+  if (!res.ok) throw new Error("EGLE " + res.status);
+  const data = await res.json();
+  if (data.error) throw new Error("EGLE error");
+  return data;
+}
+
+function egleConcern(layer, feature, origin) {
+  const a = feature.attributes || {};
+  const lat = Number(a.Latitude), lng = Number(a.Longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const from = turf.point([origin.lng, origin.lat]);
+  const to = turf.point([lng, lat]);
+  return {
+    layerKey: layer.key,
+    kind: "egle",
+    name: a.SiteName || layer.label,
+    lat: lat, lng: lng,
+    miles: turf.distance(from, to, { units: "miles" }),
+    bearing: turf.bearing(from, to),
+    egle: {
+      address: a.Address || "", city: a.City || "", zip: a.ZipCode || "",
+      county: a.County || "", risk: a.RiskCondition || "",
+      contaminants: a.Contaminants || "", siteId: a.SiteID || ""
+    }
+  };
+}
+
 function classifyOsm(t) {
   if (!t) return null;
   if (t.power === "line") return "powerlines";
@@ -1610,6 +1653,10 @@ function clearConcernGroups() {
 function concernPopupHtml(c, l) {
   const lines = ["<strong>" + escapeHtml(c.name) + "</strong>", escapeHtml(l.label)];
   if (c.kind === "epa" && c.epa.address) lines.push(escapeHtml(c.epa.address));
+  if (c.kind === "egle") {
+    if (c.egle.address) lines.push(escapeHtml(c.egle.address));
+    if (c.egle.risk) lines.push(escapeHtml(c.egle.risk));
+  }
   if (c.kind === "osm") {
     const extra = [c.osm.type, c.osm.operator, c.osm.voltage ? c.osm.voltage + " V" : ""]
       .filter(Boolean).filter(x => x !== l.label).join(" · ");
@@ -1768,6 +1815,14 @@ function buildConcernRow(c, l) {
     addDetail(dl, "City", cityLine);
     addDetail(dl, "County", titleCaseCounty(c.epa.county));
     addDetail(dl, "Registry ID", c.epa.registryId);
+  } else if (c.kind === "egle") {
+    const cityLine = [c.egle.city, c.egle.zip].filter(Boolean).join(" ");
+    addDetail(dl, "Address", c.egle.address);
+    addDetail(dl, "City", cityLine);
+    addDetail(dl, "County", c.egle.county ? c.egle.county + " County" : "");
+    addDetail(dl, "Risk status", c.egle.risk);
+    addDetail(dl, "Contaminants", c.egle.contaminants);
+    addDetail(dl, "Site ID", c.egle.siteId);
   } else {
     addDetail(dl, "Type", c.osm.type || l.label);
     addDetail(dl, "Operator", c.osm.operator);
@@ -2157,11 +2212,18 @@ async function runSearch(place) {
 
   setStatus("Scanning nearby concerns\u2026", { busy: true });
 
-  /* Fire all layer requests in parallel; isolate per-source failures */
-  const epaLayers = LAYERS.filter(l => l.kind === "epa");
-  const epaTasks = epaLayers.map(l => fetchEpaLayer(l.epaLayerId, place.lng, place.lat, l.radiusM));
-  const [epaResults, osmResult] = await Promise.all([
-    Promise.allSettled(epaTasks),
+  /* Fire all layer requests in parallel; isolate per-source failures.
+     Point layers (EPA + EGLE) each resolve to a tagged result so a failure
+     keeps its layer identity. */
+  const pointLayers = LAYERS.filter(l => l.kind === "epa" || l.kind === "egle");
+  const pointTasks = pointLayers.map(l => {
+    const p = (l.kind === "epa")
+      ? fetchEpaLayer(l.epaLayerId, place.lng, place.lat, l.radiusM)
+      : fetchEgleLayer(l, place.lng, place.lat, l.radiusM);
+    return p.then(data => ({ layer: l, ok: true, data: data }), err => ({ layer: l, ok: false, err: err }));
+  });
+  const [pointResults, osmResult] = await Promise.all([
+    Promise.all(pointTasks),
     fetchOsm(place.lat, place.lng).then(
       v => ({ status: "fulfilled", value: v }),
       e => ({ status: "rejected", reason: e })
@@ -2174,13 +2236,14 @@ async function runSearch(place) {
   const byLayer = {};
   LAYERS.forEach(l => { byLayer[l.key] = { status: "ok", concerns: [] }; });
 
-  epaResults.forEach((res, i) => {
-    const l = epaLayers[i];
-    if (res.status === "fulfilled") {
-      const feats = (res.value && res.value.features) || [];
-      byLayer[l.key].concerns = feats.map(f => epaConcern(l, f, place)).filter(Boolean).sort((a, b) => a.miles - b.miles);
+  pointResults.forEach(res => {
+    const l = res.layer;
+    if (res.ok) {
+      const feats = (res.data && res.data.features) || [];
+      const parse = (l.kind === "epa") ? epaConcern : egleConcern;
+      byLayer[l.key].concerns = feats.map(f => parse(l, f, place)).filter(Boolean).sort((a, b) => a.miles - b.miles);
     } else {
-      console.error("EPA layer failed:", l.key, res.reason);
+      console.error("Point layer failed:", l.key, res.err);
       byLayer[l.key].status = "error";
     }
   });
